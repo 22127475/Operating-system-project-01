@@ -29,7 +29,7 @@ struct NTFS {
 
     // MFT size
     uint32_t mft_offset;
-
+    vector<MFT_Entry> mft_entries;
 
 public:
     NTFS(string name);
@@ -40,7 +40,7 @@ public:
     void print_vbr();
 };
 
-struct MFT {
+struct MFT_Header {
     uint32_t info_offset;
     uint32_t info_size;
 
@@ -53,7 +53,7 @@ struct MFT {
     uint32_t num_sector;
 
 public:
-    MFT(vector<BYTE> &data);
+    MFT_Header(vector<BYTE> &data);
 };
 
 struct MFT_Entry {
@@ -69,7 +69,14 @@ struct MFT_Entry {
     uint32_t parent_mft_record_number;
     wstring file_name;
 
-    vector<MFT_Entry> children;
+    // Data
+    bool resident;
+    vector<BYTE> data; // Resident, no name
+    // Non-resident, no name
+    uint32_t start_cluster;
+    uint32_t num_cluster;
+
+    vector<MFT_Entry> sub_files;
 
 public:
     uint32_t standard_i4_start;
@@ -86,9 +93,12 @@ public:
     void extract_standard_i4(vector<BYTE> &data, uint32_t start);
 
     void extract_file_name(vector<BYTE> &data, uint32_t start);
+
+    void checkdata(vector<BYTE> &data, uint32_t start);
+    void extract_data(vector<BYTE> &data, uint32_t start);
 };
 
 
 uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-// use printf(L"%l", s) to print wstring
+//? use printf(L"%l", s) to print wstring
 wstring fromUnicode(vector<BYTE> &BYTEs);
