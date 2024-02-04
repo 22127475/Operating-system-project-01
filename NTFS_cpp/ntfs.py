@@ -1,5 +1,5 @@
-import re
 import os
+import re
 from datetime import datetime
 from enum import Flag, auto
 
@@ -30,12 +30,12 @@ class MFTRecord:
     def __init__(self, data) -> None:
         self.raw_data = data
         self.file_id = int.from_bytes(self.raw_data[0x2C:0x30], byteorder="little")
-        
+
         self.flag = self.raw_data[0x16]
         if self.flag == 0 or self.flag == 2:
             # Deleted record
             raise Exception("Skip this record")
-        
+
         standard_info_start = int.from_bytes(
             self.raw_data[0x14:0x16], byteorder="little"
         )
@@ -45,15 +45,14 @@ class MFTRecord:
         )
         self.standard_info = {}
         self.__parse_standard_info(standard_info_start)
-        
+
         file_name_start = standard_info_start + standard_info_size
         file_name_size = int.from_bytes(
             self.raw_data[file_name_start + 4 : file_name_start + 8], byteorder="little"
         )
         self.file_name = {}
         self.__parse_file_name(file_name_start)
-        
-        
+
         data_start = file_name_start + file_name_size
         data_sig = self.raw_data[data_start : data_start + 4]
         if data_sig[0] == 64:

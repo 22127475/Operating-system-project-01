@@ -3,12 +3,80 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
-#include <cmath>
+// #include <cmath>
+#include <map>
 
 using namespace std;
 using BYTE = unsigned char;
 
 constexpr int VBR_SIZE = 512;
+
+
+struct MFT_Header {
+    uint64_t info_offset;
+    uint64_t info_size;
+
+    uint64_t file_name_offset;
+    uint64_t file_name_size;
+
+    uint64_t data_offset;
+    uint64_t data_size;
+
+    uint64_t num_sector;
+
+public:
+    MFT_Header(vector<BYTE> &data);
+};
+
+struct MFT_Entry {
+    uint64_t mft_record_number;
+    uint8_t flag;
+
+    // Standard Information
+    uint64_t created_time;
+    uint64_t last_modified_time;
+    vector<string> attribute;
+
+    // File Name
+    uint64_t parent_mft_record_number;
+    wstring file_name;
+
+    // Data
+    bool resident;
+    uint64_t real_size;
+    vector<BYTE> content; // Resident, no name
+    // Non-resident, no name
+    uint64_t start_cluster;
+    uint64_t num_cluster;
+
+    vector<uint64_t> sub_files_number;
+
+public:
+    uint64_t standard_i4_start;
+    uint64_t standard_i4_size;
+
+    uint64_t file_name_start;
+    uint64_t file_name_size;
+
+    uint64_t data_start;
+    uint64_t data_size;
+public:
+    MFT_Entry() {}
+    MFT_Entry(vector<BYTE> &data);
+    vector<string> convert2attribute(uint32_t flags);
+    void extract_standard_i4(vector<BYTE> &data, uint64_t start);
+
+    void extract_file_name(vector<BYTE> &data, uint64_t start);
+
+    void checkdata(vector<BYTE> &data, uint64_t start);
+    void extract_data(vector<BYTE> &data, uint64_t start);
+};
+
+
+uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
+//? use printf(L"%l", s) to print wstring
+wstring fromUnicode(vector<BYTE> &BYTEs);
+
 
 struct NTFS {
     vector<BYTE> vbr;
@@ -20,16 +88,21 @@ struct NTFS {
     // uint8_t media_descriptor;
     // uint16_t sectors_per_track;
     // uint16_t number_of_heads;
-    // uint32_t hidden_sectors;
-    uint32_t total_sectors;
-    uint32_t mft_cluster_number;
-    uint32_t mft_mirror_cluster_number;
-    int8_t mft_record_size;
-    uint32_t serial_number;
+    // uint64_t hidden_sectors;
+    uint64_t total_sectors;
+    uint64_t mft_cluster_number;
+    uint64_t mft_mirror_cluster_number;
+    int32_t mft_record_size;
+    uint64_t serial_number;
 
     // MFT size
-    uint32_t mft_offset;
-    vector<MFT_Entry> mft_entries;
+    uint64_t mft_offset;
+    // vector<MFT_Entry> mft_entries;
+    map<uint64_t, MFT_Entry> mft_entries;   
+
+public:
+    uint64_t root;
+    uint64_t current_node;
 
 public:
     NTFS(string name);
@@ -37,68 +110,11 @@ public:
     bool is_NTFS();
     void extract_vbr();
 
+    void child_linker();
+
+    uint64_t find_mft_entry(string name);
+    uint64_t get_parent();
+
     void print_vbr();
+    void print_ntfs_in4();
 };
-
-struct MFT_Header {
-    uint32_t info_offset;
-    uint32_t info_size;
-
-    uint32_t file_name_offset;
-    uint32_t file_name_size;
-
-    uint32_t data_offset;
-    uint32_t data_size;
-
-    uint32_t num_sector;
-
-public:
-    MFT_Header(vector<BYTE> &data);
-};
-
-struct MFT_Entry {
-    uint32_t mft_record_number;
-    uint8_t flag;
-
-    // Standard Information
-    uint64_t created_time;
-    uint64_t last_modified_time;
-    string attribute;
-
-    // File Name
-    uint32_t parent_mft_record_number;
-    wstring file_name;
-
-    // Data
-    bool resident;
-    vector<BYTE> data; // Resident, no name
-    // Non-resident, no name
-    uint32_t start_cluster;
-    uint32_t num_cluster;
-
-    vector<MFT_Entry> sub_files;
-
-public:
-    uint32_t standard_i4_start;
-    uint32_t standard_i4_size;
-
-    uint32_t file_name_start;
-    uint32_t file_name_size;
-
-    uint32_t data_start;
-    uint32_t data_size;
-public:
-    MFT_Entry(vector<BYTE> &data);
-    string convert2attribute(uint32_t flags);
-    void extract_standard_i4(vector<BYTE> &data, uint32_t start);
-
-    void extract_file_name(vector<BYTE> &data, uint32_t start);
-
-    void checkdata(vector<BYTE> &data, uint32_t start);
-    void extract_data(vector<BYTE> &data, uint32_t start);
-};
-
-
-uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-//? use printf(L"%l", s) to print wstring
-wstring fromUnicode(vector<BYTE> &BYTEs);
