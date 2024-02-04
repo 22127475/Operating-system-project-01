@@ -1,6 +1,6 @@
-from Entry import Entry
-from FAT_Table import FATTable
-from constant import *
+from FAT32.Entry import Entry
+from FAT32.FAT_Table import FATTable
+from FAT32.constant import *
 
 class Directory:
     """
@@ -77,11 +77,10 @@ class Directory:
             
         def draw (directory: Directory, prefix = ""):
             for i in range (0, len(directory.directoryTree)):
-                if (directory.directoryTree[i].attribute == ARCHIVE or directory.directoryTree[i].attribute == DIRECTORY
-                    or directory.directoryTree[i].attribute == HIDDEN_FILE or directory.directoryTree[i].attribute == READ_ONLY):
+                if (directory.directoryTree[i].attribute == ARCHIVE or directory.directoryTree[i].attribute == DIRECTORY):
                     print(prefix + ("└── " if i == len(directory.directoryTree) - 1 else "├── ") + directory.directoryTree[i].name)
                 
-                if (directory.directoryTree[i].attribute in (ARCHIVE, HIDDEN_FILE, READ_ONLY)):
+                if (directory.directoryTree[i].attribute == ARCHIVE):
                     continue
                 
                 if (directory.directoryTree[i].attribute == DIRECTORY):

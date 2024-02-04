@@ -1,87 +1,113 @@
-from BootSector import BootSector
-from constant import *
-from Directory import Directory
-from FAT_Table import FATTable
-from Entry import Entry
+from NTFS.Directory import *
 
-def checkFAT32 (volumeName: str):
+def checkNTFS (volumeName: str):
     try:
         volumePath = r"\\." + f"\{volumeName}:"
         with open (volumePath, 'rb') as f:
             f.read(1) #? For avoid ERROR INVALID ARGUMENT, we can change 1 by any value
-            f.seek(0x52)
-            FAT_Name = f.read(8)
+            f.seek(0x03)
+            OEM_ID = f.read(8)
             
-            if (FAT_Name == b"FAT32   "):
+            if (OEM_ID == b"NTFS    "):
                 return True
             return False
     except Exception as e:
         print ("Error:", e)
         exit()
 
-class FAT32:
+class NTFS:
     def __init__ (self, volume_name):
         self.volumeName = volume_name
         self.path = f"{self.volumeName}:\\"
         
         #? Components
-        self.bootSector = None
-        self.listFAT_Tables: list[FATTable] = []
-        self.RDET: Directory = None
-        #? Dictionary for looking up RDET or SDET(s), key is the starting_cluster
-        self.DET: dict[int, Directory] = dict()
+        self.volumeBootRecord: VolumeBootRecord = None
+        self.MFT: list[MFTEntry] = []
+        self.rootDirectory = None
         
         self.readComponents()
-    
+        
     def readComponents (self):
         try:
             volumePath = r'\\.' + f'\{self.volumeName}:'
             with open (volumePath, 'rb') as f:
-                #! Read Boot Sector
+                #! Read VBR
                 #? Because at this time, the parameter bytePerSector is not defined, so we use the value 512 as the common number of bytes in a sector
-                bootSector_rawData = f.read(512) 
-                self.bootSector = BootSector(bootSector_rawData)
+                VBR_rawData = f.read(512) 
+                self.volumeBootRecord = VolumeBootRecord(VBR_rawData)
                 
-                #! Read FAT Tables
-                #? From the first bytes (the second parameter is 0), we seek the first sector of FAT Table 1
-                f.seek(self.bootSector.getFirstSectorOfFAT1() * self.bootSector.bytesPerSector, 0)
-                for i in range (0, self.bootSector.numFATCopies):
-                    FATTable_rawData = f.read(self.bootSector.FAT_Size * self.bootSector.bytesPerSector)
-                    self.listFAT_Tables.append(FATTable(FATTable_rawData, self.bootSector))
-                    
-                #! Read RDET
-                #? From the starting cluster read from Boot Sector, we will read all sectors of RDET, through FAT Table 1
-                RDET_listSectors = self.listFAT_Tables[0].getListSectors(self.bootSector.RDET_startingCluster)
-                RDET_rawData = b""
-                for sector in RDET_listSectors:
-                    f.seek(sector * self.bootSector.bytesPerSector, 0)
-                    RDET_rawData += f.read(self.bootSector.bytesPerSector)
-                
-                self.RDET = Directory(self.volumeName, self.path, RDET_rawData, self.listFAT_Tables[0], self.DET)
-                self.DET[self.bootSector.RDET_startingCluster] = self.RDET
+                #! Read MFT
+                #? From the first bytes (the second parameter is 0), we seek the first cluster of Master File Table (MFT)
+                f.seek(self.volumeBootRecord.BPB.MFTStartingCluster * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector, 0)
+                #? Get $MFT File, which is the first MFT Entry
+                first_MFTEntry_rawData = f.read(self.volumeBootRecord.BPB.MFTEntrySize)
+                first_MFTEntry = MFTEntry(first_MFTEntry_rawData, self.volumeName, self.path, self.volumeBootRecord)
+                MFT_numCLusters = None
+                """ 
+                Get the information of MFT from $MFT, this amount of information is not found at any documentations
+                We found from analyzing the structure of $MFT we read C disk on Active@Disk Editor
+                """
+                #? We will traverse each attribute in $MFT and find $DATA attribute
+                """
+                In reality, $MFT include only 4 attributes, which are $STANDARD_INFORMATION, $FILE_NAME, $DATA and $BITMAP
+                We can get $DATA attribute by calling the third attribute in the attribute list of this MFT entry
+                But for sure, we will traverse and compare the type ID
+                """
+                for i in range (0, len(first_MFTEntry.attributes)):
+                    if (first_MFTEntry.attributes[i].header.typeID == MFT_DATA):
+                        """
+                        We care two parameters: starting VCN and last VCN
+                        In $MFT, starting VCN will be 0, so last VCN + 1 is the number of clusters in MFT
+                        """
+                        try:
+                            if (first_MFTEntry.attributes[i].lastVCN is not None):
+                                MFT_numCLusters = first_MFTEntry.attributes[i].lastVCN + 1
+                            else:
+                                raise ("Your disk is having some problems")
+                        except Exception as e:
+                            print(e)
+                            exit()
+                        
+                #? So, the size in bytes of MFT is MFT_numClusters * SectorsPerCluster * BytesPerSector
+                f.seek(self.volumeBootRecord.BPB.MFTStartingCluster * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector, 0)
+                MFT_rawData = f.read(MFT_numCLusters * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector)
+
+                #? Read all entries in MFT by getting each (MFTEntrysize) bytes
+                for i in range (0, len(MFT_rawData), self.volumeBootRecord.BPB.MFTEntrySize):
+                    if (MFT_rawData[i: i + 4] == b"FILE"):
+                        self.MFT.append(MFTEntry(MFT_rawData[i: (i + self.volumeBootRecord.BPB.MFTEntrySize)], self.volumeName, self.path, self.volumeBootRecord))
+                        
+                #! Build root directory
+                self.rootDirectory = RootDirectory(self.MFT)
                 
         except Exception as e:
             print ("Error:", e)
             exit()
-    
-    def findDirectory (self) -> Directory:
-        Det: Directory = None
+            
+    def findDirectory (self) -> MFTEntry:
+        MFT_entry: MFTEntry = None
 
-        for det in self.DET.values():
-            if (det.path == self.path):
-                Det = det
+        for entry in self.rootDirectory.directoryDict.values():
+            if (entry.path == self.path):
+                MFT_entry = entry
                 break
             
-        return Det
+        return MFT_entry
     
-    def findEntryInDirectory (self, Det: Directory, nameEntry: str) -> Entry:
-        dir_Entry: Entry = None
-        for entry in Det.directoryTree:
-            if (entry.attribute not in (VOLUME_LABEL, SYSTEM_FILE) and entry.name.lower() == nameEntry.lower()):
-                    dir_Entry = entry
-                    break
-                
-        return dir_Entry
+    def findEntryInDirectory (self, Det: MFTEntry, nameEntry: str) -> MFTEntry:
+        try:
+            if (Det.isUsedDirectory()):
+                dir_Entry: MFTEntry = None
+                for entry in Det.children:
+                    if (entry.fileName.lower() == nameEntry.lower()):
+                            dir_Entry = entry
+                            break
+                        
+                return dir_Entry
+            else:
+                raise Exception ("You are passing a file, not a directory")
+        except Exception as e:
+            print(e)
         
     def changeDirectory (self, listArgs: list[str]):
         #! Change the path
@@ -105,24 +131,24 @@ class FAT32:
                 Det = self.findDirectory()
                 
                 #! Find entry based on the given argument
-                dir_Entry: Entry = self.findEntryInDirectory(Det, listArgs[0])
-                if (dir_Entry is None):
+                MFT_Entry: MFTEntry = self.findEntryInDirectory(Det, nameEntry = listArgs[0])
+                if (MFT_Entry is None):
                     raise Exception (f"Not found {listArgs[0]}")
-                elif (dir_Entry.attribute != DIRECTORY):
+                elif (MFT_Entry.isUsedFile()):
                     raise Exception (f"{listArgs[0]} is not a directory")
                 
                 if (self.path == f"{self.volumeName}:\\"):
-                    self.path += listArgs[0]
+                    self.path += MFT_Entry.fileName
                 else:
-                    self.path += "\\" + listArgs[0]
+                    self.path += "\\" + MFT_Entry.fileName
             except Exception as e:
                 print("Error:", e)
     
     def drawDirectoryTree (self):
         #! Find directory corresponding the current path
-        Det = self.findDirectory()
+        MFT_Entry = self.findDirectory()
         #!Draw directory tree
-        Det.drawDirectoryTree()
+        MFT_Entry.drawDirectoryTree()
         
     def readTextContext (self, listArgs: list[str]):
         #! Find directory corresponding the current path
@@ -132,13 +158,13 @@ class FAT32:
             fileContent = ""
             try:
                 #! Find entry based on the given argument
-                dir_Entry: Entry = self.findEntryInDirectory(Det, Arg)
+                dir_Entry: MFTEntry = self.findEntryInDirectory(Det, Arg)
                 if (dir_Entry is None):
                     raise Exception (f"Not found {Arg}")
-                elif (dir_Entry.attribute != ARCHIVE):
-                    raise Exception (f"{ARCHIVE} is not a file")
+                elif (dir_Entry.isUsedDirectory()):
+                    raise Exception (f"{Arg} is not a file")
                 
-                fileContent = dir_Entry.getFileContent()[:dir_Entry.fileSize].decode()
+                fileContent = dir_Entry.fileContent.decode().strip('\x00')
             except UnicodeDecodeError:
                 print (f"{Arg} is not a text file, please use an appropriate application to read the content")
                 return

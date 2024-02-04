@@ -1,4 +1,4 @@
-from BootSector import BootSector
+from FAT32.BootSector import BootSector
 # Special cluster's values
 FREE = 0x00000000
 BAD = 0x0FFFFFF7

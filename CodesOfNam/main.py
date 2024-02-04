@@ -1,4 +1,5 @@
-from FAT32 import *
+from FAT32.FAT32 import *
+from NTFS.NTFS import *
 import os
 
 def main ():
@@ -18,8 +19,10 @@ def main ():
     volume = None
     if (checkFAT32(listVolumeNames[option - 1])):
         volume = FAT32(listVolumeNames[option - 1])
+    elif (checkNTFS(listVolumeNames[option - 1])):
+        volume = NTFS(listVolumeNames[option - 1])
     else:
-        print ("Our program supports FAT32 for the volume type")
+        print ("Our program supports FAT32 and NTFS for the volume type")
         exit()
     
     while (True):

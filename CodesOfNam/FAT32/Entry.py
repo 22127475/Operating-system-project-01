@@ -1,7 +1,7 @@
-from FAT_Table import FATTable
+from FAT32.FAT_Table import FATTable
 import datetime
 from itertools import chain
-from constant import *
+from FAT32.constant import *
 
 class Entry:
     def __init__ (self, volume_name: str, data: bytes, FAT_Table: FATTable):
