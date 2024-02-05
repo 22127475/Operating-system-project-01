@@ -3,10 +3,11 @@
 int main()
 {
 	App app;
-	/*app.scanDisk();
-	app.printBootSector();
-	app.printRDET();
-	app.findFolderByName();*/
+	// std::string s = "D";
+	// app.scanDisk(s);
+	// app.printBootSector();
+	// app.printRDET();
+	// app.findFolderByName();
 	app.mainloop();
 
 	return 0;

@@ -307,7 +307,7 @@ std::vector<CFolder*> App::readRDET(long offset)
 				name += lfn[lfn.size() - 1 - i];
 
 			for (int i = 0; i < name.size(); ++i)
-				if (name[i] == 'ÿ')
+				if (name[i] == 'ï¿½')
 					name[i] = ' ';
 
 		}
@@ -406,7 +406,7 @@ void App::readRDET(long offset, CFolder& folder)
 
 
 			for (int i = 0; i < name.size(); ++i)
-				if (name[i] == 'ÿ')
+				if (name[i] == 'ï¿½')
 					name[i] = ' ';
 			normalization(name);
 
@@ -554,20 +554,21 @@ void App::mainloop()
 	std::cout << "//                                      //\n";
 	std::cout << "//////////////////////////////////////////\n";
 	std::cout << "------------------------------------------\n";
-	std::cout << "Make by: " << "\n";
+	std::cout << "Made by: " << "\n";
 	std::cout << "|--------------------------------------------|\n";
 	std::cout << "|  MSSV                                 Name |\n";
 	std::cout << "|--------------------------------------------|\n";
 	std::cout << "| 22127026\t" << "                  On Gia Bao |" << "\n";
 	std::cout << "| 22127275\t" << "               Tran Anh Minh |" << "\n";
 	std::cout << "| 22127280\t" << "        Doan Dang Phuong Nam |" << "\n";
+	std::cout << "| 22127465\t" << "           Bui Nguyen Lan Vy |" << "\n";
 	std::cout << "| 22127475\t" << "                Diep Gia Huy |" << "\n";
 	std::cout << "|--------------------------------------------|\n";
 
 	
 	std::string disk = "\\\\.\\";
 	std::string volume = "";
-	std::cout << "Input disk name (C,D,F...): ";
+	std::cout << "Input disk name (C,D,E,F...): ";
 	getline(std::cin, volume);
 	volume += ":";
 	disk += volume;
