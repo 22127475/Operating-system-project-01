@@ -3,16 +3,14 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
-// #include <cmath>
 #include <map>
 
 using namespace std;
 using BYTE = unsigned char;
-
 constexpr int VBR_SIZE = 512;
 
-
-struct MFT_Header {
+class MFT_Header {
+private:
     uint64_t info_offset;
     uint64_t info_size;
 
@@ -22,13 +20,15 @@ struct MFT_Header {
     uint64_t data_offset;
     uint64_t data_size;
 
+public:
     uint64_t num_sector;
 
 public:
     MFT_Header(vector<BYTE> &data);
 };
 
-struct MFT_Entry {
+class MFT_Entry {
+public:
     uint64_t mft_record_number;
     uint8_t flag;
 
@@ -49,24 +49,8 @@ struct MFT_Entry {
     uint64_t start_cluster;
     uint64_t num_cluster;
 
+    // Sub-files
     vector<uint64_t> sub_files_number;
-
-
-public:
-    MFT_Entry() {}
-    MFT_Entry(vector<BYTE> &data);
-    vector<string> convert2attribute(uint32_t flags);
-    void extract_standard_i4(vector<BYTE> &data, uint64_t start);
-
-    void extract_file_name(vector<BYTE> &data, uint64_t start);
-
-    void checkdata(vector<BYTE> &data, uint64_t start);
-    void extract_data(vector<BYTE> &data, uint64_t start);
-
-    bool is_directory();
-    bool is_archive();
-    bool is_hidden_system();
-
 
 private:
     uint64_t standard_i4_start;
@@ -78,28 +62,42 @@ private:
     uint64_t data_start;
     uint64_t data_size;
 
+public:
+    MFT_Entry() {}
+    MFT_Entry(vector<BYTE> &data);
+
+    vector<string> convert2attribute(uint32_t flags);
+    void extract_standard_i4(vector<BYTE> &data, uint64_t start);
+
+    void extract_file_name(vector<BYTE> &data, uint64_t start);
+
+    void checkdata(vector<BYTE> &data, uint64_t start);
+    void extract_data(vector<BYTE> &data, uint64_t start);
+
+    bool is_directory();
+    bool is_archive();
+    bool is_hidden_system();
 };
 
-struct NTFS {
+class NTFS {
+public:
+    FILE *volume;
+
     vector<BYTE> vbr;
-    // uint8_t jump[3];
     string oem_id;
     uint16_t bytes_per_sector;
     uint8_t sectors_per_cluster;
     uint16_t reserved_sectors;
-    // uint8_t media_descriptor;
-    // uint16_t sectors_per_track;
-    // uint16_t number_of_heads;
-    // uint64_t hidden_sectors;
     uint64_t total_sectors;
     uint64_t mft_cluster_number;
     uint64_t mft_mirror_cluster_number;
     int32_t mft_record_size;
     uint64_t serial_number;
 
-    // MFT size
+    // MFT start position
     uint64_t mft_offset;
-    // vector<MFT_Entry> mft_entries;
+
+    // List of all MFT entries
     map<uint64_t, MFT_Entry> mft_entries;
 
 public:
@@ -108,30 +106,27 @@ public:
 
 public:
     NTFS(string name);
+    ~NTFS();
 
     bool is_NTFS();
     void extract_vbr();
-
     void child_linker();
 
-    void print_vbr();
-    void print_ntfs_in4();
-    bool compareWstrVsStr(const wstring &wstr, const string &str);
     uint64_t find_mft_entry(const string &record_name);
-    uint64_t get_parent();
+    vector<BYTE> get_data(const string &name);
 
-    vector<string> splitString(const string &input);
     bool change_dir(string path);
     wstring get_current_path();
     void list();
-
     void tree(uint64_t entry = 0, string prefix = "", bool last = false);
+
+    void print_vbr();
+    void print_ntfs_in4();
 };
 
-
-
-
+// Support functions
 uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-//? use printf(L"%l", s) to print wstring
 wstring fromUnicode(vector<BYTE> &BYTEs);
 
+vector<string> splitString(const string &input);
+bool compareWstrVsStr(const wstring &wstr, const string &str);

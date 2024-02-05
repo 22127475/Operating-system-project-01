@@ -1,124 +1,6 @@
 #include "ntfs.h"
 
-NTFS::NTFS(string name) {
-    name = "\\\\.\\" + name + ":";
-    FILE *volume = fopen(name.c_str(), "rb");
-    if (!volume) {
-        fprintf(stderr, "Error: Permission denied\n");
-        exit(1);
-    }
-    vbr.resize(512);
-    size_t bytesRead = fread(vbr.data(), 1, 512, volume);
-    if (bytesRead != 512) {
-        fprintf(stderr, "Error: unable to read VBR\n");
-        exit(1);
-    }
-    extract_vbr();
-
-    if (!is_NTFS()) {
-        fprintf(stderr, "Error: Not NTFS\n");
-        exit(1);
-    }
-
-    //? Read MFT header
-    vector<BYTE> mft_header(mft_record_size);
-    fseeko64(volume, mft_offset, 0);
-
-    bytesRead = fread(mft_header.data(), 1, mft_record_size, volume);
-
-    //? Read the mft entry
-    MFT_Header mft_header_info(mft_header);
-
-    vector<BYTE> mft_entry(mft_record_size);
-
-    for (uint64_t i = 2; i < mft_header_info.num_sector; i += 2) {
-        bytesRead = fread(mft_entry.data(), 1, mft_record_size, volume);
-
-        string mark = "    ";
-        for (int j = 0; j < 4; ++j)
-            mark[j] = mft_entry[j];
-        if (mark != "FILE") continue;
-
-        try {
-            MFT_Entry mft_entry_info(mft_entry);
-            mft_entries[mft_entry_info.mft_record_number] = mft_entry_info;
-        }
-        catch (const char *msg) {
-            continue;
-        }
-    }
-
-    //! Build the directory tree from the list of MFT entries
-    child_linker();
-
-    fclose(volume);
-}
-
-bool NTFS::is_NTFS() {
-    if (oem_id == "NTFS    ")
-        return true;
-    return false;
-}
-void NTFS::extract_vbr() {
-    oem_id.resize(8);
-    for (int i = 3; i < 0xB; i++)
-        oem_id[i - 3] = vbr[i];
-
-    bytes_per_sector = cal(vbr, 0xB, 0xD);
-    sectors_per_cluster = vbr[0xD];
-    reserved_sectors = cal(vbr, 0xE, 0x10);
-    total_sectors = cal(vbr, 0x28, 0x30);
-    mft_cluster_number = cal(vbr, 0x30, 0x38);
-    mft_mirror_cluster_number = cal(vbr, 0x38, 0x40);
-
-    // Signed
-    uint64_t recordsize = vbr[0x40];
-    if (recordsize > 127) recordsize = 256 - recordsize;
-    mft_record_size = 1 << recordsize;
-
-
-    serial_number = cal(vbr, 0x48, 0x50);
-
-    mft_offset = mft_cluster_number * sectors_per_cluster * bytes_per_sector;
-}
-
-void NTFS::child_linker() {
-    //? Add child mft record number to its parent
-    for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it) {
-        uint64_t parent = it->second.parent_mft_record_number;
-        if (mft_entries.count(parent))
-            mft_entries[parent].sub_files_number.push_back(it->first);
-    }
-
-    //? Find the root 
-    for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it)
-        if (it->second.mft_record_number == it->second.parent_mft_record_number) {
-            root = it->second.mft_record_number;
-            break;
-        }
-    current_node.push_back(root);
-}
-
-
-void NTFS::print_vbr() {
-    for (int i = 0; i < VBR_SIZE; ++i) {
-        printf("%02x ", (uint8_t)vbr[i]);
-        if ((i + 1) % 16 == 0)
-            printf("\n");
-    }
-}
-void NTFS::print_ntfs_in4() {
-    printf("OEM ID: %s\n", oem_id.c_str());
-    printf("Bytes per sector: %u\n", bytes_per_sector);
-    printf("Sectors per cluster: %u\n", sectors_per_cluster);
-    printf("Reserved sectors: %u\n", reserved_sectors);
-    printf("Total sectors: %u\n", total_sectors);
-    printf("First cluster 0f MFT: %u\n", mft_cluster_number);
-    printf("First cluseter of MFT mirror: %u\n", mft_mirror_cluster_number);
-    printf("MFT record size: %d\n", mft_record_size);
-}
-
-
+// MFT Header
 MFT_Header::MFT_Header(vector<BYTE> &data) {
     info_offset = cal(data, 0x14, 0x16);
     info_size = cal(data, 0x3C, 0x40);
@@ -132,6 +14,8 @@ MFT_Header::MFT_Header(vector<BYTE> &data) {
     num_sector = (cal(data, 0x118, 0x120) + 1) * 8;
 }
 
+
+// MFT Entry
 MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     mft_record_number = cal(data, 0x2C, 0x30);
 
@@ -214,7 +98,6 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     file_name = fromUnicode(name);
 }
 
-
 void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
     //? Check for the Object ID (0x40)
     uint64_t type_id = cal(data, start, start + 0x4);
@@ -256,24 +139,6 @@ void MFT_Entry::extract_data(vector<BYTE> &data, uint64_t start) {
     }
 }
 
-// Calculate Little endian
-uint64_t cal(vector<BYTE> &bytes, int start, int end) {
-    uint64_t sum = 0;
-    int shift = 0;
-    for (int i = start; i < end; i++) {
-        sum |= (static_cast<uint64_t>(bytes[i]) << shift);
-        shift += 8;
-    }
-    return sum;
-}
-wstring fromUnicode(vector<BYTE> &BYTEs) {
-    // Cast BYTEs to wchar_t* (UTF-16)
-    const wchar_t *wcharData = reinterpret_cast<const wchar_t *>(BYTEs.data());
-
-    // Construct wstring from wchar_t* data
-    return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
-}
-
 bool MFT_Entry::is_directory() {
     for (auto &x : attribute)
         if (x == "DIRECTORY")
@@ -292,10 +157,124 @@ bool MFT_Entry::is_hidden_system() {
             return true;
     return false;
 }
-bool NTFS::compareWstrVsStr(const wstring &wstr, const string &str) {
-    wstring str2(str.begin(), str.end());
-    return wstr == str2;
+
+
+// NTFS
+NTFS::NTFS(string name) {
+    name = "\\\\.\\" + name + ":";
+    volume = fopen(name.c_str(), "rb");
+    if (!volume) {
+        fprintf(stderr, "Error: Permission denied\n");
+        exit(1);
+    }
+    vbr.resize(512);
+    size_t bytesRead = fread(vbr.data(), 1, 512, volume);
+    if (bytesRead != 512) {
+        fprintf(stderr, "Error: unable to read VBR\n");
+        exit(1);
+    }
+    extract_vbr();
+
+    if (!is_NTFS()) {
+        fprintf(stderr, "Error: Not NTFS\n");
+        exit(1);
+    }
+
+    //? Read MFT header
+    vector<BYTE> mft_header(mft_record_size);
+    fseeko64(volume, mft_offset, 0);
+
+    bytesRead = fread(mft_header.data(), 1, mft_record_size, volume);
+
+    //? Read the mft entry
+    MFT_Header mft_header_info(mft_header);
+
+    vector<BYTE> mft_entry(mft_record_size);
+
+    for (uint64_t i = 2; i < mft_header_info.num_sector; i += 2) {
+        bytesRead = fread(mft_entry.data(), 1, mft_record_size, volume);
+
+        string mark = "    ";
+        for (int j = 0; j < 4; ++j)
+            mark[j] = mft_entry[j];
+        if (mark != "FILE") continue;
+
+        try {
+            MFT_Entry mft_entry_info(mft_entry);
+            mft_entries[mft_entry_info.mft_record_number] = mft_entry_info;
+        }
+        catch (const char *msg) {
+            continue;
+        }
+    }
+    child_linker();
 }
+NTFS::~NTFS() {
+    fclose(volume);
+}
+
+bool NTFS::is_NTFS() {
+    if (oem_id == "NTFS    ")
+        return true;
+    return false;
+}
+void NTFS::extract_vbr() {
+    oem_id.resize(8);
+    for (int i = 3; i < 0xB; i++)
+        oem_id[i - 3] = vbr[i];
+
+    bytes_per_sector = cal(vbr, 0xB, 0xD);
+    sectors_per_cluster = vbr[0xD];
+    reserved_sectors = cal(vbr, 0xE, 0x10);
+    total_sectors = cal(vbr, 0x28, 0x30);
+    mft_cluster_number = cal(vbr, 0x30, 0x38);
+    mft_mirror_cluster_number = cal(vbr, 0x38, 0x40);
+
+    // Signed
+    uint64_t recordsize = vbr[0x40];
+    if (recordsize > 127) recordsize = 256 - recordsize;
+    mft_record_size = 1 << recordsize;
+
+
+    serial_number = cal(vbr, 0x48, 0x50);
+
+    mft_offset = mft_cluster_number * sectors_per_cluster * bytes_per_sector;
+}
+void NTFS::child_linker() {
+    //? Add child mft record number to its parent
+    for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it) {
+        uint64_t parent = it->second.parent_mft_record_number;
+        if (mft_entries.count(parent))
+            mft_entries[parent].sub_files_number.push_back(it->first);
+    }
+
+    //? Find the root 
+    for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it)
+        if (it->second.mft_record_number == it->second.parent_mft_record_number) {
+            root = it->second.mft_record_number;
+            break;
+        }
+    current_node.push_back(root);
+}
+
+void NTFS::print_vbr() {
+    for (int i = 0; i < VBR_SIZE; ++i) {
+        printf("%02x ", (uint8_t)vbr[i]);
+        if ((i + 1) % 16 == 0)
+            printf("\n");
+    }
+}
+void NTFS::print_ntfs_in4() {
+    printf("OEM ID: %s\n", oem_id.c_str());
+    printf("Bytes per sector: %u\n", bytes_per_sector);
+    printf("Sectors per cluster: %u\n", sectors_per_cluster);
+    printf("Reserved sectors: %u\n", reserved_sectors);
+    printf("Total sectors: %u\n", total_sectors);
+    printf("First cluster 0f MFT: %u\n", mft_cluster_number);
+    printf("First cluseter of MFT mirror: %u\n", mft_mirror_cluster_number);
+    printf("MFT record size: %d\n", mft_record_size);
+}
+
 uint64_t NTFS::find_mft_entry(const string &record_name) {
     uint64_t des = 0;
     for (auto x : mft_entries[current_node.back()].sub_files_number)
@@ -305,25 +284,34 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
         }
     return des;
 }
-uint64_t NTFS::get_parent() {
-    return mft_entries[current_node.back()].parent_mft_record_number;
-}
-
-vector<string> NTFS::splitString(const string &input) {
-    vector<string> tokens;
-    size_t startPos = 0;
-    size_t foundPos = input.find_first_of("\\/");
-
-    while (foundPos != string::npos) {
-        tokens.push_back(input.substr(startPos, foundPos - startPos));
-        startPos = foundPos + 1;
-        foundPos = input.find_first_of("\\/", startPos);
+vector<BYTE> NTFS::get_data(const string &name) {
+    uint64_t des = find_mft_entry(name);
+    if (des == 0) {
+        fprintf(stderr, "Error: File not found\n");
+        exit(1);
     }
+    MFT_Entry mft = mft_entries[des];
+    if (mft.is_directory()) {
+        fprintf(stderr, "Error: %s is a directory\n", name.c_str());
+        exit(1);
+    }
+    if (mft.resident)
+        return mft.content;
 
-    tokens.push_back(input.substr(startPos));
+    if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
+        mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
+    vector<BYTE> data(mft.real_size);
+    uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
 
-    return tokens;
+    fseeko64(volume, offset, 0);
+    size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
+    if (bytesRead != mft.real_size) {
+        fprintf(stderr, "Error: unable to read data\n");
+        exit(1);
+    }
+    return data;
 }
+
 bool NTFS::change_dir(string path) {
     vector<string> paths = splitString(path);
     for (auto &x : paths) {
@@ -358,39 +346,86 @@ void NTFS::list() {
         wprintf(L"%ls\n", name.c_str());
     }
 }
-
 void NTFS::tree(uint64_t entry, string prefix, bool last) {
-    if (entry == 0) entry = current_node.back(); //? Nếu ko có truyền vào thì lấy tại đường dẫn hiện tại
-    MFT_Entry mft = mft_entries[entry]; 
+    if (entry == 0) entry = current_node.back();
+    MFT_Entry mft = mft_entries[entry];
 
-    
-    wprintf(L"%ls\n", mft.file_name.c_str()); //? In tên file đó ra
-    if (mft.is_archive()) //? Nếu là file thì return, thư mục hay đồ thì tiếp tục
+
+    wprintf(L"%ls\n", mft.file_name.c_str());
+    if (mft.is_archive())
         return;
 
-    for (int i = 0; i < mft.sub_files_number.size(); i++) { //? Duyệt qua các con trong thư mục đó
-        if (mft_entries[mft.sub_files_number[i]].is_hidden_system()) continue; //? Nếu là file ẩn hay hệ thống thì skip vì nhiều vl :)))
-        if (i != mft.sub_files_number.size() - 1) { //? Không phải thg cuối
-            printf("%s", (prefix + char(195) + char(196)).c_str()); //? In cái dấu này check extended ascii nha :)))
+    int lst = mft.sub_files_number.size() - 1;
+    while (lst >= 0 && mft_entries[mft.sub_files_number[lst]].is_hidden_system())
+        lst--; //? Bỏ qua các file ẩn hay hệ thống
+    for (int i = 0; i < mft.sub_files_number.size(); i++) {
+        if (mft_entries[mft.sub_files_number[i]].is_hidden_system())
+            continue;
+        if (i != lst) {
+            printf("%s", (prefix + char(195) + char(196)).c_str());
             tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
         }
-        else { //? Này thg cuôis
+        else {
             printf("%s", (prefix + char(192) + char(196)).c_str());
             tree(mft.sub_files_number[i], prefix + "  ", true);
         }
     }
 }
 
+
+// Support functions
+uint64_t cal(vector<BYTE> &bytes, int start, int end) {
+    uint64_t sum = 0;
+    int shift = 0;
+    for (int i = start; i < end; i++) {
+        sum |= (static_cast<uint64_t>(bytes[i]) << shift);
+        shift += 8;
+    }
+    return sum;
+}
+wstring fromUnicode(vector<BYTE> &BYTEs) {
+    // Cast BYTEs to wchar_t* (UTF-16)
+    const wchar_t *wcharData = reinterpret_cast<const wchar_t *>(BYTEs.data());
+
+    // Construct wstring from wchar_t* data
+    return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
+}
+
+vector<string> splitString(const string &input) {
+    vector<string> tokens;
+    size_t startPos = 0;
+    size_t foundPos = input.find_first_of("\\/");
+
+    while (foundPos != string::npos) {
+        tokens.push_back(input.substr(startPos, foundPos - startPos));
+        startPos = foundPos + 1;
+        foundPos = input.find_first_of("\\/", startPos);
+    }
+
+    tokens.push_back(input.substr(startPos));
+
+    return tokens;
+}
+bool compareWstrVsStr(const wstring &wstr, const string &str) {
+    wstring str2(str.begin(), str.end());
+    return wstr == str2;
+}
+
+// Main
 int main() {
     string disk = "D";
     NTFS ntfs(disk);
     // ntfs.print_vbr();
     // ntfs.print_ntfs_in4();
     // ntfs.change_dir("Games");
+    ntfs.change_dir("A/B");
     // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
-    ntfs.change_dir("A");
-    // ntfs.list();
-    ntfs.tree();
+    ntfs.list();
+    // ntfs.tree();
+    vector<BYTE> data = ntfs.get_data("F.txt");
+    for (auto &x : data)
+        printf("%c", x);
+    printf("\n");
 
     return 0;
 }
