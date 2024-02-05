@@ -1,0 +1,12 @@
+#pragma once
+#include <iostream>
+#include <string>
+#include <locale>
+#include <codecvt>
+#include <cstdint>
+#include <cstdio>
+#include <vector>
+#include <cstdlib>
+#include "Type.h"
+#include "Item.h"
+#include "App.h"
