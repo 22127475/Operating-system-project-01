@@ -264,13 +264,13 @@ void NTFS::print_vbr() {
             printf("\n");
     }
 }
-void NTFS::print_ntfs_in4() {
+void NTFS::print_base_in4() {
     printf("OEM ID: %s\n", oem_id.c_str());
     printf("Bytes per sector: %u\n", bytes_per_sector);
     printf("Sectors per cluster: %u\n", sectors_per_cluster);
     printf("Reserved sectors: %u\n", reserved_sectors);
     printf("Total sectors: %u\n", total_sectors);
-    printf("First cluster 0f MFT: %u\n", mft_cluster_number);
+    printf("First cluster of MFT: %u\n", mft_cluster_number);
     printf("First cluseter of MFT mirror: %u\n", mft_mirror_cluster_number);
     printf("MFT record size: %d\n", mft_record_size);
 }
@@ -412,20 +412,20 @@ bool compareWstrVsStr(const wstring &wstr, const string &str) {
 }
 
 // Main
-int main() {
-    string disk = "D";
-    NTFS ntfs(disk);
-    // ntfs.print_vbr();
-    // ntfs.print_ntfs_in4();
-    // ntfs.change_dir("Games");
-    ntfs.change_dir("A/B");
-    // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
-    ntfs.list();
-    // ntfs.tree();
-    vector<BYTE> data = ntfs.get_data("F.txt");
-    for (auto &x : data)
-        printf("%c", x);
-    printf("\n");
+// int main() {
+//     string disk = "D";
+//     NTFS ntfs(disk);
+//     // ntfs.print_vbr();
+//     // ntfs.print_ntfs_in4();
+//     // ntfs.change_dir("Games");
+//     ntfs.change_dir("A");
+//     // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
+//     // ntfs.list();
+//     ntfs.tree();
+//     vector<BYTE> data = ntfs.get_data("F.txt");
+//     // for (auto &x : data)
+//     //     printf("%c", x);
+//     // printf("\n");
 
-    return 0;
-}
+//     return 0;
+// }

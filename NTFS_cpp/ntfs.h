@@ -1,13 +1,4 @@
-#include <cstdio>
-#include <cstdint>
-#include <cstdlib>
-#include <vector>
-#include <string>
-#include <map>
-
-using namespace std;
-using BYTE = unsigned char;
-constexpr int VBR_SIZE = 512;
+#include "base.h"
 
 class MFT_Header {
 private:
@@ -79,7 +70,7 @@ public:
     bool is_hidden_system();
 };
 
-class NTFS {
+class NTFS : public Volume{
 public:
     FILE *volume;
 
@@ -121,7 +112,7 @@ public:
     void tree(uint64_t entry = 0, string prefix = "", bool last = false);
 
     void print_vbr();
-    void print_ntfs_in4();
+    void print_base_in4();
 };
 
 // Support functions
