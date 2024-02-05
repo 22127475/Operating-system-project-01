@@ -51,15 +51,7 @@ struct MFT_Entry {
 
     vector<uint64_t> sub_files_number;
 
-public:
-    uint64_t standard_i4_start;
-    uint64_t standard_i4_size;
 
-    uint64_t file_name_start;
-    uint64_t file_name_size;
-
-    uint64_t data_start;
-    uint64_t data_size;
 public:
     MFT_Entry() {}
     MFT_Entry(vector<BYTE> &data);
@@ -70,13 +62,23 @@ public:
 
     void checkdata(vector<BYTE> &data, uint64_t start);
     void extract_data(vector<BYTE> &data, uint64_t start);
+
+    bool is_directory();
+    bool is_archive();
+    bool is_hidden_system();
+
+
+private:
+    uint64_t standard_i4_start;
+    uint64_t standard_i4_size;
+
+    uint64_t file_name_start;
+    uint64_t file_name_size;
+
+    uint64_t data_start;
+    uint64_t data_size;
+
 };
-
-
-uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-//? use printf(L"%l", s) to print wstring
-wstring fromUnicode(vector<BYTE> &BYTEs);
-
 
 struct NTFS {
     vector<BYTE> vbr;
@@ -98,11 +100,11 @@ struct NTFS {
     // MFT size
     uint64_t mft_offset;
     // vector<MFT_Entry> mft_entries;
-    map<uint64_t, MFT_Entry> mft_entries;   
+    map<uint64_t, MFT_Entry> mft_entries;
 
 public:
     uint64_t root;
-    uint64_t current_node;
+    vector<uint64_t> current_node;
 
 public:
     NTFS(string name);
@@ -112,9 +114,24 @@ public:
 
     void child_linker();
 
-    uint64_t find_mft_entry(string name);
-    uint64_t get_parent();
-
     void print_vbr();
     void print_ntfs_in4();
+    bool compareWstrVsStr(const wstring &wstr, const string &str);
+    uint64_t find_mft_entry(const string &record_name);
+    uint64_t get_parent();
+
+    vector<string> splitString(const string &input);
+    bool change_dir(string path);
+    wstring get_current_path();
+    void list();
+
+    void tree(uint64_t entry = 0, string prefix = "", bool last = false);
 };
+
+
+
+
+uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
+//? use printf(L"%l", s) to print wstring
+wstring fromUnicode(vector<BYTE> &BYTEs);
+

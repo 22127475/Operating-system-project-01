@@ -59,10 +59,6 @@ bool NTFS::is_NTFS() {
         return true;
     return false;
 }
-
-uint64_t pow2(uint64_t x) {
-    return 1 << x;
-}
 void NTFS::extract_vbr() {
     oem_id.resize(8);
     for (int i = 3; i < 0xB; i++)
@@ -78,7 +74,7 @@ void NTFS::extract_vbr() {
     // Signed
     uint64_t recordsize = vbr[0x40];
     if (recordsize > 127) recordsize = 256 - recordsize;
-    mft_record_size = pow2(recordsize);
+    mft_record_size = 1 << recordsize;
 
 
     serial_number = cal(vbr, 0x48, 0x50);
@@ -97,10 +93,10 @@ void NTFS::child_linker() {
     //? Find the root 
     for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it)
         if (it->second.mft_record_number == it->second.parent_mft_record_number) {
-            root = it->first;
+            root = it->second.mft_record_number;
             break;
         }
-    current_node = root;
+    current_node.push_back(root);
 }
 
 
@@ -208,7 +204,7 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
 
     uint64_t beginFN = start + offset;
 
-    parent_mft_record_number = cal(data, beginFN, beginFN + 0x8);
+    parent_mft_record_number = cal(data, beginFN, beginFN + 0x6);
 
     uint8_t name_length = data[beginFN + 0x40];
 
@@ -278,12 +274,123 @@ wstring fromUnicode(vector<BYTE> &BYTEs) {
     return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
 }
 
+bool MFT_Entry::is_directory() {
+    for (auto &x : attribute)
+        if (x == "DIRECTORY")
+            return true;
+    return false;
+}
+bool MFT_Entry::is_archive() {
+    for (auto &x : attribute)
+        if (x == "ARCHIVE")
+            return true;
+    return false;
+}
+bool MFT_Entry::is_hidden_system() {
+    for (auto &x : attribute)
+        if (x == "HIDDEN" || x == "SYSTEM")
+            return true;
+    return false;
+}
+bool NTFS::compareWstrVsStr(const wstring &wstr, const string &str) {
+    wstring str2(str.begin(), str.end());
+    return wstr == str2;
+}
+uint64_t NTFS::find_mft_entry(const string &record_name) {
+    uint64_t des = 0;
+    for (auto x : mft_entries[current_node.back()].sub_files_number)
+        if (compareWstrVsStr(mft_entries[x].file_name, record_name)) {
+            des = x;
+            break;
+        }
+    return des;
+}
+uint64_t NTFS::get_parent() {
+    return mft_entries[current_node.back()].parent_mft_record_number;
+}
 
-// int main() {
-//     string disk = "D";
-//     NTFS ntfs(disk);
-//     // ntfs.print_vbr();
-//     ntfs.print_ntfs_in4();
+vector<string> NTFS::splitString(const string &input) {
+    vector<string> tokens;
+    size_t startPos = 0;
+    size_t foundPos = input.find_first_of("\\/");
 
-//     return 0;
-// }
+    while (foundPos != string::npos) {
+        tokens.push_back(input.substr(startPos, foundPos - startPos));
+        startPos = foundPos + 1;
+        foundPos = input.find_first_of("\\/", startPos);
+    }
+
+    tokens.push_back(input.substr(startPos));
+
+    return tokens;
+}
+bool NTFS::change_dir(string path) {
+    vector<string> paths = splitString(path);
+    for (auto &x : paths) {
+        if (x == "..") {
+            if (current_node.size() > 1)
+                current_node.pop_back();
+        }
+        else if (x == ".")
+            continue;
+        else {
+            uint64_t des = find_mft_entry(x);
+            if (des == 0)
+                return false;
+            current_node.push_back(des);
+        }
+    }
+    return true;
+}
+wstring NTFS::get_current_path() {
+    wstring path;
+    for (auto &x : current_node) {
+        path += mft_entries[x].file_name;
+        path += L"\\";
+    }
+    return path;
+}
+void NTFS::list() {
+    uint64_t node = current_node.back();
+    for (auto &x : mft_entries[node].sub_files_number) {
+        if (mft_entries[x].is_hidden_system()) continue;
+        wstring name = mft_entries[x].file_name;
+        wprintf(L"%ls\n", name.c_str());
+    }
+}
+
+void NTFS::tree(uint64_t entry, string prefix, bool last) {
+    if (entry == 0) entry = current_node.back(); //? Nếu ko có truyền vào thì lấy tại đường dẫn hiện tại
+    MFT_Entry mft = mft_entries[entry]; 
+
+    
+    wprintf(L"%ls\n", mft.file_name.c_str()); //? In tên file đó ra
+    if (mft.is_archive()) //? Nếu là file thì return, thư mục hay đồ thì tiếp tục
+        return;
+
+    for (int i = 0; i < mft.sub_files_number.size(); i++) { //? Duyệt qua các con trong thư mục đó
+        if (mft_entries[mft.sub_files_number[i]].is_hidden_system()) continue; //? Nếu là file ẩn hay hệ thống thì skip vì nhiều vl :)))
+        if (i != mft.sub_files_number.size() - 1) { //? Không phải thg cuối
+            printf("%s", (prefix + char(195) + char(196)).c_str()); //? In cái dấu này check extended ascii nha :)))
+            tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
+        }
+        else { //? Này thg cuôis
+            printf("%s", (prefix + char(192) + char(196)).c_str());
+            tree(mft.sub_files_number[i], prefix + "  ", true);
+        }
+    }
+}
+
+int main() {
+    string disk = "D";
+    NTFS ntfs(disk);
+    // ntfs.print_vbr();
+    // ntfs.print_ntfs_in4();
+    // ntfs.change_dir("Games");
+    // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
+    ntfs.change_dir("A");
+    // ntfs.list();
+    ntfs.tree();
+
+    return 0;
+}
