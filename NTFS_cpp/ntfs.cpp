@@ -286,15 +286,13 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
 }
 vector<BYTE> NTFS::get_data(const string &name) {
     uint64_t des = find_mft_entry(name);
-    if (des == 0) {
-        fprintf(stderr, "Error: File not found\n");
-        exit(1);
-    }
+    if (des == 0)
+        throw "Error: File not found";
+
     MFT_Entry mft = mft_entries[des];
-    if (mft.is_directory()) {
-        fprintf(stderr, "Error: %s is a directory\n", name.c_str());
-        exit(1);
-    }
+    if (mft.is_directory())
+        throw "Error: " + name + " is a directory";
+
     if (mft.resident)
         return mft.content;
 
@@ -338,15 +336,36 @@ wstring NTFS::get_current_path() {
     }
     return path;
 }
-void NTFS::list() {
+
+
+// directory-archive-readonly-hidden-system-reparse point
+string attribute_bit(vector<string> &attribute) {
+    string attr = "------";
+    for (auto &x : attribute) {
+        if (x == "DIRECTORY") attr[0] = 'd';
+        if (x == "ARCHIVE") attr[1] = 'a';
+        if (x == "READ ONLY") attr[2] = 'r';
+        if (x == "HIDDEN") attr[3] = 'h';
+        if (x == "SYSTEM") attr[4] = 's';
+        if (x == "REPARSE POINT") attr[5] = 'l';
+    }
+    return attr;
+}
+void NTFS::list(bool print_hidden) {
     uint64_t node = current_node.back();
+
+    printf("Attributes\tFile name\n");
     for (auto &x : mft_entries[node].sub_files_number) {
-        if (mft_entries[x].is_hidden_system()) continue;
+        if (!print_hidden && mft_entries[x].is_hidden_system())
+            continue;
+        string attr = attribute_bit(mft_entries[x].attribute);
+        printf("%s\t\t", attr.c_str());
+
         wstring name = mft_entries[x].file_name;
         wprintf(L"%ls\n", name.c_str());
     }
 }
-void NTFS::tree(uint64_t entry, string prefix, bool last) {
+void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
     if (entry == 0) entry = current_node.back();
     MFT_Entry mft = mft_entries[entry];
 
@@ -363,11 +382,11 @@ void NTFS::tree(uint64_t entry, string prefix, bool last) {
             continue;
         if (i != lst) {
             printf("%s", (prefix + char(195) + char(196)).c_str());
-            tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
+            print_tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
         }
         else {
             printf("%s", (prefix + char(192) + char(196)).c_str());
-            tree(mft.sub_files_number[i], prefix + "  ", true);
+            print_tree(mft.sub_files_number[i], prefix + "  ", true);
         }
     }
 }
@@ -391,15 +410,17 @@ wstring fromUnicode(vector<BYTE> &BYTEs) {
     return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
 }
 
-vector<string> splitString(const string &input) {
+vector<string> splitString(const string &input, string delimeter) {
     vector<string> tokens;
+    // if (input.back() == '\n')
+    //     input.pop_back();
     size_t startPos = 0;
-    size_t foundPos = input.find_first_of("\\/");
+    size_t foundPos = input.find_first_of(delimeter);
 
     while (foundPos != string::npos) {
         tokens.push_back(input.substr(startPos, foundPos - startPos));
         startPos = foundPos + 1;
-        foundPos = input.find_first_of("\\/", startPos);
+        foundPos = input.find_first_of(delimeter, startPos);
     }
 
     tokens.push_back(input.substr(startPos));
@@ -418,11 +439,11 @@ bool compareWstrVsStr(const wstring &wstr, const string &str) {
 //     // ntfs.print_vbr();
 //     // ntfs.print_ntfs_in4();
 //     // ntfs.change_dir("Games");
-//     ntfs.change_dir("A");
+//     // ntfs.change_dir("A");
 //     // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
-//     // ntfs.list();
-//     ntfs.tree();
-//     vector<BYTE> data = ntfs.get_data("F.txt");
+//     ntfs.list();
+//     // ntfs.tree();
+//     // vector<BYTE> data = ntfs.get_data("F.txt");
 //     // for (auto &x : data)
 //     //     printf("%c", x);
 //     // printf("\n");

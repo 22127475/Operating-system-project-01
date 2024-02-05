@@ -70,7 +70,7 @@ public:
     bool is_hidden_system();
 };
 
-class NTFS : public Volume{
+class NTFS : public Volume {
 public:
     FILE *volume;
 
@@ -108,16 +108,24 @@ public:
 
     bool change_dir(string path);
     wstring get_current_path();
-    void list();
-    void tree(uint64_t entry = 0, string prefix = "", bool last = false);
+    void list(bool print_hidden = false);
+    void print_tree(uint64_t entry = 0, string prefix = "", bool last = false);
 
     void print_vbr();
     void print_base_in4();
+
+public: //? polymorphism
+    bool cd(string path) {
+        return change_dir(path);
+    }
+    wstring cwd() {
+        return get_current_path();
+    }
+    void ls() {
+        list();
+    }
+    void tree() {
+        print_tree();
+    }
 };
 
-// Support functions
-uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-wstring fromUnicode(vector<BYTE> &BYTEs);
-
-vector<string> splitString(const string &input);
-bool compareWstrVsStr(const wstring &wstr, const string &str);
