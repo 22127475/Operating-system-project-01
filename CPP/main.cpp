@@ -9,15 +9,21 @@ int checkVolume(string name) {
     }
 
     string format = "        ";
-    fseeko64(volume, 0x52, 0);
+    fread(&format[0], 1, 8, volume); // Read temporarily
+
+    fseek(volume, 0x52, 0);
     fread(&format[0], 1, 8, volume);
+    printf("%s\n", format.c_str());
+
     if (format == "FAT32   ") {
         fclose(volume);
         return 1;
     }
 
-    fseeko64(volume, 0x3, 0);
+    fseek(volume, 0x3, 0);
     fread(&format[0], 1, 8, volume);
+    printf("%s\n", format.c_str());
+
     if (format == "NTFS    ") {
         fclose(volume);
         return 2;
@@ -46,12 +52,15 @@ void print_data(Volume *volume, string name) {
 }
 void run(Volume *volume) {
     system("cls");
+
+    //todo in thong tin nhom'
     volume->print_base_in4();
     while (true) {
-        printf("\n> ");
+        wprintf(L"\n%ls", volume->cwd().c_str());
+        printf(" >> ");
 
-        char buffer[100];
-        fgets(buffer, 100, stdin);
+        char buffer[256];
+        fgets(buffer, 256, stdin);
         // string line(l);
         vector<string> command = splitString(string(buffer), " \n");
 
@@ -81,7 +90,6 @@ void run(Volume *volume) {
         }
         else
             fprintf(stderr, "Error: Unknown command\n");
-
     }
 }
 
@@ -96,7 +104,7 @@ int main() {
         exit(1);
     }
     else if (check == 2) {
-        // fprintf(stderr, "It is NTFS\n");
+        fprintf(stderr, "It is NTFS\n\n");
         volume = new NTFS(name);
         run(volume);
     }
