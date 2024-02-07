@@ -1,4 +1,17 @@
 #include "ntfs.cpp"
+#include "FAT32.cpp"
+
+
+//todo viet thong tin thanh vien nhom
+//todo cwd bỏ \ ở cuối nma ở gốc thì có :))
+//todo chinh cho cd absolute path, bỏ tên ổ đĩa thành biến trong NTFS để cd thẳng ra ngoài
+//! cd folder của folder con không tồn tại => recover trc khi cd
+//todo chỉnh in cây không dùng extended ascii (+, -, |)
+//todo chỉnh read: folder -> in ra file con (lenh ls), file -> in ra nội dung
+
+
+//todo cua Huy
+//! cd folder bỏ dấu chấm
 
 int checkVolume(string name) {
     name = "\\\\.\\" + name + ":";
@@ -99,12 +112,12 @@ int main() {
 
     int check = checkVolume(name);
     if (check == 1) {
-        fprintf(stderr, "It is FAT32\n");
-        // volume = new FAT32(name);
-        exit(1);
+        // fprintf(stderr, "It is FAT32\n");
+        volume = new FAT_32(name);
+        run(volume);
     }
     else if (check == 2) {
-        fprintf(stderr, "It is NTFS\n\n");
+        // fprintf(stderr, "It is NTFS\n\n");
         volume = new NTFS(name);
         run(volume);
     }
@@ -115,3 +128,11 @@ int main() {
 
     return 0;
 }
+// int main() {
+//     string name = "E";
+//     Volume * volume = new FAT_32(name);
+
+//     run(volume);
+
+//     return 0;
+// }

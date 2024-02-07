@@ -57,7 +57,6 @@ vector<string> MFT_Entry::convert2attribute(uint32_t flags) {
     if (flags & 0x1000) attributes.push_back("OFFLINE");
     if (flags & 0x2000) attributes.push_back("NOT_CONTENT_INDEXED");
     if (flags & 0x4000) attributes.push_back("ENCRYPTED");
-
     return attributes;
 }
 void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
@@ -391,7 +390,6 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
     }
 }
 
-
 // Support functions
 uint64_t cal(vector<BYTE> &bytes, int start, int end) {
     uint64_t sum = 0;
@@ -408,28 +406,6 @@ wstring fromUnicode(vector<BYTE> &BYTEs) {
 
     // Construct wstring from wchar_t* data
     return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
-}
-
-vector<string> splitString(const string &input, string delimeter) {
-    vector<string> tokens;
-    // if (input.back() == '\n')
-    //     input.pop_back();
-    size_t startPos = 0;
-    size_t foundPos = input.find_first_of(delimeter);
-
-    while (foundPos != string::npos) {
-        tokens.push_back(input.substr(startPos, foundPos - startPos));
-        startPos = foundPos + 1;
-        foundPos = input.find_first_of(delimeter, startPos);
-    }
-
-    tokens.push_back(input.substr(startPos));
-
-    return tokens;
-}
-bool compareWstrVsStr(const wstring &wstr, const string &str) {
-    wstring str2(str.begin(), str.end());
-    return wstr == str2;
 }
 
 // Main
