@@ -1,15 +1,5 @@
 #pragma once
-#include <string>
-#include <vector>
-#include <locale>
-#include <codecvt>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-//
-//#include <iostream>
-
-using BYTE = unsigned char;
+#include "base.h"
 
 unsigned long littleEdian(const BYTE* arr, unsigned int n);
 unsigned long littleEdian(const std::vector<BYTE>& arr);
@@ -60,24 +50,28 @@ public:
 public:
 	CFolder();
 	CFolder(const std::string& name, const std::string& state, const std::string& size, const std::vector<long>& cluster);
-	void print(bool printSubFolder = true, int time = 0);
+	void print(bool isFull = true);
 	bool isFolder();
 	void getChild(std::vector<CFolder*>);
+	void setParent(CFolder* parent);
 	bool canPrint();
-	CFolder* findByName(std::string fileName);
+	CFolder* findByName(std::string fileName, bool searchAll = true);
 	~CFolder();
 
 };
 
-class FAT_32
+class FAT_32 : public Volume
 {
 private:
 	BootSector bootSector;
 	CFolder root;
+	std::vector<std::string> path;
 	std::string diskName;
 	std::vector<std::vector<BYTE>> fatMap;
 
 public:
+	CFolder* curPath;
+
 	FAT_32();
 	FAT_32(std::string volume);
 	void readBootSector();
@@ -93,10 +87,23 @@ public:
 	//std::vector<CFolder*> readRDET(long offset);
 	void readRDET(long offset, CFolder& folder);
 	void makeRDET();
-	//void printRDET(const CFolder& folder, int time);
+	void printRDET(CFolder& folder, std::string time = "", bool last = false);
 	void printRDET();
-	void printFolderInfo(CFolder& folder);
-	void findFolderByName(std::string folderName);
+	std::vector<BYTE> printFolderInfo(CFolder* folder);
+	CFolder* findFolderByName(CFolder& folder, std::string folderName, bool searchAll = true);
+
+
+	// Volume
+	std::string csd();
+
+	void print_base_in4();
+
+	bool cd(string path);
+	wstring cwd();
+	void ls();
+	void tree();
+
+	vector<BYTE> get_data(const string& name);
 };
 
 
