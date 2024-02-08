@@ -131,3 +131,6 @@ public: //? polymorphism
     void read(const string &name);
 };
 
+// Support functions
+uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
+wstring fromUnicode(vector<BYTE> &BYTEs);

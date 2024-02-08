@@ -26,34 +26,49 @@ public:
     virtual void read(const string &name) = 0;
 };
 
-// Support functions
-uint64_t cal(vector<BYTE> &BYTEs, int start, int end);
-wstring fromUnicode(vector<BYTE> &BYTEs);
 
-vector<string> splitString(const string &input, string delimeter = "\\/");
+vector<string> splitString(const string &input, string delimeter = "/\\", bool all = true);
 bool compareWstrVsStr(const wstring &wstr, const string &str);
 
 
+string trim(const string& str) {
+    size_t start = str.find_first_not_of(" \t\n\r");
+    size_t end = str.find_last_not_of(" \t\n\r");
+
+    if (start == string::npos || end == string::npos)
+        return ""; // No non-whitespace characters found
+
+    return str.substr(start, end - start + 1);
+}
 // split A/B, A\B => [A] [B]
 // split cd A => [cd] [A] [\n]
-//vector<string> splitString(const string &input, string delimeter) {
-//    vector<string> tokens;
-//    // if (input.back() == '\n')
-//    //     input.pop_back();
-//    size_t startPos = 0;
-//    size_t foundPos = input.find_first_of(delimeter);
-//
-//    while (foundPos != string::npos) {
-//        tokens.push_back(input.substr(startPos, foundPos - startPos));
-//        startPos = foundPos + 1;
-//        foundPos = input.find_first_of(delimeter, startPos);
-//    }
-//
-//    tokens.push_back(input.substr(startPos));
-//
-//    return tokens;
-//}
-//bool compareWstrVsStr(const wstring &wstr, const string &str) {
-//    wstring str2(str.begin(), str.end());
-//    return wstr == str2;
-//}
+vector<string> splitString(const string &input, string delimeter, bool all) {
+    vector<string> tokens;
+    
+    string tmp = trim(input);
+    if (tmp[0] == tmp[tmp.size() - 1] == '\"')
+        tmp = tmp.substr(1, tmp.size() - 2);
+
+    size_t startPos = 0;
+    size_t foundPos = tmp.find_first_of(delimeter);
+
+
+    if (all)
+        while (foundPos != string::npos) {
+            tokens.push_back(tmp.substr(startPos, foundPos - startPos));
+            startPos = foundPos + 1;
+            foundPos = tmp.find_first_of(delimeter, startPos);
+        }
+    else {
+        tokens.push_back(tmp.substr(startPos, foundPos - startPos));
+        startPos = foundPos + 1;
+    }
+
+    tokens.push_back(tmp.substr(startPos));
+
+    return tokens;
+}
+bool compareWstrVsStr(const wstring &wstr, const string &str) {
+    wstring str2(str.begin(), str.end());
+    return wstr == str2;
+}

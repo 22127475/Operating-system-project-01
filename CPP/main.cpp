@@ -1,17 +1,5 @@
-//#include "ntfs.cpp"
+#include "ntfs.cpp"
 #include "FAT32.h"
-
-
-//viet thong tin thanh vien nhom
-//cwd bỏ \ ở cuối nma ở gốc thì có :))
-//cd folder của folder con không tồn tại => recover trc khi cd
-//chinh cho cd absolute path, bỏ tên ổ đĩa thành biến trong NTFS để cd thẳng ra ngoài
-//chỉnh in cây không dùng extended ascii (+, -, |)
-// chỉnh read: folder -> in ra file con (lenh ls), file -> in ra nội dung
-
-
-//cua Huy
-//cd folder bỏ dấu chấm
 
 void print_team() {
     printf("Members:\n");
@@ -62,6 +50,19 @@ void try_read(Volume *volume, string name) {
         fprintf(stderr, "Error: %s\n", msg);
     }
 }
+void try_cd(Volume *volume, vector<string> command) {
+    if (command.size() == 1) {
+        fprintf(stderr, "Error: No path specified\n");
+        return;
+    }
+    if (command[1][0] == '\"' ^ command[1][command[1].size() - 1] == '\"') { // xor for if the begin and end are different
+        fprintf(stderr, "Error: The \"\" must be completed\n");
+        return;
+    }
+
+    if (!volume->cd(command[1]))
+        fprintf(stderr, "Error: No such directory\n");
+}
 void print_help() {
     printf("Supported commands:\n");
     printf("  cd <path> - change directory\n");
@@ -85,28 +86,21 @@ void run(Volume *volume) {
         char buffer[256];
         fgets(buffer, 256, stdin);
         // string line(l);
-        vector<string> command = splitString(string(buffer), " \n");
+        vector<string> command = splitString(string(buffer), " \n", false);
 
-        if (command[0] == "cd") {
-            if (command.size() == 1) {
-                fprintf(stderr, "Error: No path specified\n"); //todo re-prompt
-                continue;
-            }
-            if (!volume->cd(command[1]))
-                fprintf(stderr, "Error: No such directory\n");
-        }
-        else if (command[0] == "cwd") {
-            wstring path = volume->cwd();
-            wprintf(L"%ls\n", path.c_str());
-        }
+        if (command[0] == "cd")
+            try_cd(volume, command);
+
+        else if (command[0] == "cwd")
+            wprintf(L"%ls\n", (volume->cwd()).c_str());
+
         else if (command[0] == "ls" || command[0] == "dir")
             volume->ls();
         else if (command[0] == "tree")
             volume->tree();
-        else if (command[0] == "read") {
-            // print_data(volume, command[1]);
+        else if (command[0] == "read")
             try_read(volume, command[1]);
-        }
+
         else if (command[0] == "cls")
             system("cls");
         else if (command[0] == "help" || command[0] == "?")
@@ -144,19 +138,10 @@ void run(Volume *volume) {
 // }
 
 int main() {
-    string name = "F";
+    string name = "E";
     Volume *volume = new FAT_32(name);
-
+    // Volume *volume = new NTFS(name);
     run(volume);
-    // volume->cd("A/B");
-    // wprintf(L"%ls\n", volume->cwd().c_str());
-
-    // volume->cd("\\");
-    // wprintf(L"%ls\n", volume->cwd().c_str());
-
-    // volume->cd("A/B/C");
-    // wprintf(L"%ls\n", volume->cwd().c_str());
-    // volume->read("F.txt");
 
     return 0;
 }
