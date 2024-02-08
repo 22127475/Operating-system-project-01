@@ -1,3 +1,4 @@
+#pragma once
 #include "base.h"
 
 class MFT_Header {

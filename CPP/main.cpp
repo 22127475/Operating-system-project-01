@@ -1,6 +1,6 @@
 #include "ntfs.cpp"
-#include "FAT32.h"
-
+#include "FAT32.cpp"
+using namespace std;
 void print_team() {
     printf("Members:\n");
     printf("22127026                 On Gia Bao\n");
@@ -22,7 +22,11 @@ int checkVolume(string name) {
     }
 
     string format = "        ";
-    fread(&format[0], 1, 8, volume); // Read temporarily
+    fread(&format[0], 1, 8, volume); 
+    
+    
+   
+    //Read temporarily
 
     fseek(volume, 0x52, 0);
     fread(&format[0], 1, 8, volume);
@@ -68,8 +72,11 @@ void print_help() {
     printf("  cd <path> - change directory\n");
     printf("  cwd - print current working directory\n");
     printf("  ls - list directory contents\n");
+    printf("  dir - list directory contents\n");
     printf("  tree - print directory tree\n");
     printf("  read <file> - print file contents\n");
+    printf("  exit - exit the program\n");
+
 }
 void run(Volume *volume) {
     system("cls");
@@ -105,7 +112,7 @@ void run(Volume *volume) {
             system("cls");
         else if (command[0] == "help" || command[0] == "?")
             print_help();
-        else if (command[0] == "quit") {
+        else if (command[0] == "exit" || command[0] == "quit") {
             printf("Goodbye\n");
             return; //todo add prompt
         }
@@ -138,7 +145,7 @@ void run(Volume *volume) {
 // }
 
 int main() {
-    string name = "E";
+    string name = "F";
     Volume *volume = new FAT_32(name);
     // Volume *volume = new NTFS(name);
     run(volume);
