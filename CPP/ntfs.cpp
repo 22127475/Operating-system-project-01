@@ -267,6 +267,7 @@ void NTFS::print_vbr() {
 }
 void NTFS::print_base_in4() {
     Volume::print_base_in4();
+    printf("Disk: %s\\\n", disk_name.c_str());
     printf("OEM ID: %s\n", oem_id.c_str());
     printf("Bytes per sector: %u\n", bytes_per_sector);
     printf("Sectors per cluster: %u\n", sectors_per_cluster);
@@ -315,7 +316,7 @@ void NTFS::read(const string &name) {
     uint64_t des = find_mft_entry(name);
     if (des == 0)
         throw "Error: File not found";
-    
+
     MFT_Entry mft = mft_entries[des];
     if (mft.is_directory()) {
         change_dir(name);
@@ -337,7 +338,7 @@ void NTFS::read(const string &name) {
 
     fseeko64(volume, offset, 0);
     size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
-    
+
     for (auto &x : data)
         printf("%c", x);
     printf("\n");
@@ -366,7 +367,7 @@ bool NTFS::change_dir(string path) {
             continue;
         else {
             uint64_t des = find_mft_entry(x);
-            if (des == 0) 
+            if (des == 0)
             {
                 current_node = temp;
                 return false;

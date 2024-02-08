@@ -1,6 +1,7 @@
 #include "ntfs.cpp"
 #include "FAT32.cpp"
 using namespace std;
+
 void print_team() {
     printf("Members:\n");
     printf("22127026                 On Gia Bao\n");
@@ -22,10 +23,10 @@ int checkVolume(string name) {
     }
 
     string format = "        ";
-    fread(&format[0], 1, 8, volume); 
-    
-    
-   
+    fread(&format[0], 1, 8, volume);
+
+
+
     //Read temporarily
 
     fseek(volume, 0x52, 0);
@@ -79,11 +80,6 @@ void print_help() {
 
 }
 void run(Volume *volume) {
-    system("cls");
-
-    //todo in thong tin nhom'
-    print_team();
-
 
     volume->print_base_in4();
     while (true) {
@@ -121,34 +117,72 @@ void run(Volume *volume) {
     }
 }
 
-// int main() {
-//     string name = "D";
-//     Volume *volume;
+string chooseDisk() {
+    DWORD drivesBitMask = GetLogicalDrives();
 
-//     int check = checkVolume(name);
-//     if (check == 1) {
-//         // fprintf(stderr, "It is FAT32\n");
-//         volume = new FAT_32(name);
-//         run(volume);
-//     }
-//     else if (check == 2) {
-//         // fprintf(stderr, "It is NTFS\n\n");
-//         volume = new NTFS(name);
-//         run(volume);
-//     }
-//     else {
-//         fprintf(stderr, "Error: Not FAT32 or NTFS\n");
-//         exit(1);
-//     }
+    vector<char> drives;
+    for (int i = 0; i < 26; ++i)  // Assume there are at most 26 drive letters
+        if (drivesBitMask & (1 << i))
+            drives.push_back('A' + i);
 
-//     return 0;
-// }
+    printf("Available drives:\n");
+    int i = 0;
+    for (char drive : drives)
+        printf("%d.  %c:\\\n", ++i, drive);
 
+    int num;
+    char nextChar;
+    do {
+        printf("\nEnter an integer between 1 and %d: ", drives.size());
+        if (scanf("%d", &num) != 1 || num < 1 || num > drives.size()) {
+            // Clear the input buffer
+            while ((nextChar = getchar()) != '\n' && nextChar != EOF) {}
+            printf("Invalid input! Please enter an integer between 1 and %d\n", drives.size());
+        }
+        else if (num < 1 || num > drives.size()) {
+            printf("Invalid input! Please enter an integer between 1 and %d\n", drives.size());
+        }
+    } while (num < 1 || num > drives.size());
+    while ((nextChar = getchar()) != '\n' && nextChar != EOF) {}
+
+    string rs(1, drives[num - 1]);
+    printf("You have chosen drive %s\n", rs.c_str());
+    Sleep(500);
+    return rs;
+}
 int main() {
-    string name = "F";
-    Volume *volume = new FAT_32(name);
-    // Volume *volume = new NTFS(name);
-    run(volume);
+    system("cls");
+    print_team();
+
+    string name = chooseDisk();
+    // string name = "D";
+    Volume *volume;
+    system("cls");
+
+    int check = checkVolume(name);
+    if (check == 1) {
+        // fprintf(stderr, "It is a FAT32 volume\n");
+        volume = new FAT_32(name);
+        run(volume);
+    }
+    else if (check == 2) {
+        // fprintf(stderr, "It is a NTFS volume\n\n");
+        volume = new NTFS(name);
+        run(volume);
+    }
+    else {
+        fprintf(stderr, "Error: Not FAT32 or NTFS\n");
+        exit(1);
+    }
 
     return 0;
 }
+
+// int main() {
+//     string name = "F";
+//     Volume *volume = new FAT_32(name);
+//     // Volume *volume = new NTFS(name);
+//     run(volume);
+
+//     return 0;
+// }

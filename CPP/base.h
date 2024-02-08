@@ -5,9 +5,12 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <windows.h>
+// #include <iostream>
+
 
 using namespace std;
-using BYTE = unsigned char;
+// using BYTE = unsigned char;
 constexpr int VBR_SIZE = 512;
 
 class Volume {
@@ -31,7 +34,7 @@ vector<string> splitString(const string &input, string delimeter = "/\\", bool a
 bool compareWstrVsStr(const wstring &wstr, const string &str);
 
 
-string trim(const string& str) {
+string trim(const string &str) {
     size_t start = str.find_first_not_of(" \t\n\r");
     size_t end = str.find_last_not_of(" \t\n\r");
 
@@ -44,7 +47,7 @@ string trim(const string& str) {
 // split cd A => [cd] [A] [\n]
 vector<string> splitString(const string &input, string delimeter, bool all) {
     vector<string> tokens;
-    
+
     string tmp = trim(input);
     if (tmp[0] == '\"' && tmp[tmp.size() - 1] == '\"')
         tmp = tmp.substr(1, tmp.size() - 2);
