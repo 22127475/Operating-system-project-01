@@ -1,5 +1,4 @@
-﻿
-#include "FAT32.h"
+﻿#include "FAT32.h"
 
 unsigned long littleEdian(const BYTE *arr, unsigned int n)
 {
@@ -149,15 +148,6 @@ void CFolder::print(bool isFull)
 	}
 
 }
-
-
-//void CFolder::print(bool isFull, bool printSubFolder, std::string time, bool last)
-//{
-//
-//	
-//
-//
-//}
 
 CFolder *CFolder::findByName(std::string fileName, bool searchAll)
 {
@@ -403,6 +393,9 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 
 
 
+		while (name.back() == '.')
+			name.pop_back();
+
 		std::string state = hexToBin(endtry.OB);
 		long startCluster = littleEdian({ endtry.clusterLo[0], endtry.clusterLo[1], endtry.clusterHi[0], endtry.clusterHi[1] });
 
@@ -575,7 +568,6 @@ void FAT_32::printRDET()
 
 std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 {
-	printf("Input: %s\n", folder->name.c_str());
 	std::vector<BYTE> res;
 	if (folder->isFolder())
 	{
@@ -585,7 +577,7 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	{
 
 		std::string ext = "";
-		int idx = folder->name.size() - 1;
+		int idx = folder->name.size();
 		for (idx; folder->name[idx] != '.'; --idx)
 		{
 		}
@@ -593,7 +585,7 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		for (int i = idx + 1; i <= idx + 3; ++i)
 			ext += folder->name[i];
 
-		if (ext != "txt" || ext != "TXT")
+		if (ext != "txt" && ext != "TXT")
 		{
 			printf("Open: \n\t %s \nwith another app \n", folder->name.c_str());
 			return res;
@@ -631,7 +623,9 @@ CFolder *FAT_32::findFolderByName(CFolder &folder, std::string folderName, bool 
 	if (res == nullptr)
 	{
 		printf("[ERROR] CANNOT FIND \"%s\"\n", folderName.c_str());
-		exit(0);
+		return nullptr;
+
+
 	}
 
 	return res;
@@ -660,30 +654,42 @@ void FAT_32::print_base_in4()
 
 bool FAT_32::cd(std::string path)
 {
-	//split path -> vector
-	std::vector <std::string > inPath;
-	std::string temp = "";
-	for (int i = 0; i < path.size(); ++i)
+	if (path[0] == '\"' && path.back() == '\"')
 	{
-		temp += path[i];
-		if (path[i] == '\\')
-		{
-			temp.pop_back();
-			inPath.push_back(temp);
-			temp = "";
-		}
+		path.erase(0,1);
+		path.pop_back();
 	}
-	if (temp.size() > 0)
-		inPath.push_back(temp);
+	std::vector <std::string > inPath = splitString(path);
 
 	if (inPath[0] == ".")
 		return true;
+	int back = 0;
 	if (inPath[0] == "..")
 	{
 		if (this->path.size() == 1 || this->path.size() == 0)
 			return true;
-		this->path.pop_back();
+		for (auto command : inPath)
+		{
+			if (command == "..")
+				back++;
+
+		}
+		if (this->path.size() > back)
+		{
+			for (int i = 0; i < back; ++i)
+			{
+				this->path.pop_back();
+			}
+		}
+		else
+		{
+			
+			std::string first = this->path[0];
+			this->path.clear();
+			this->path.push_back(first);
+		}
 		inPath = this->path;
+		
 	}
 
 
@@ -703,17 +709,15 @@ bool FAT_32::cd(std::string path)
 			tempPath = tempPath->findByName(inPath[i], false);
 			if (tempPath == nullptr || !tempPath->isFolder())
 			{
-				printf("[ERROR]: CANNOT FOUND PATH \"%s\"", path.c_str());
-				exit(0);
+				return false;
 			}
 			currentPath.push_back(inPath[i]);
 
 		}
-		if (tempPath == nullptr || !tempPath->isFolder())
+		/*if (tempPath == nullptr || !tempPath->isFolder())
 		{
-			printf("[ERROR]: CANNOT FOUND PATH \"%s\"", path.c_str());
-			exit(0);
-		}
+			return false;
+		}*/
 
 
 		curPath = tempPath;
@@ -728,17 +732,15 @@ bool FAT_32::cd(std::string path)
 			tempPath = tempPath->findByName(inPath[i], false);
 			if (tempPath == nullptr || !tempPath->isFolder())
 			{
-				printf("[ERROR]: CANNOT FOUND PATH \"%s\"", path.c_str());
-				exit(0);
+				return false;
 			}
 			currentPath.push_back(inPath[i]);
 
 		}
-		if (tempPath == nullptr || !tempPath->isFolder())
+		/*if (tempPath == nullptr || !tempPath->isFolder())
 		{
-			printf("[ERROR]: CANNOT FOUND PATH \"%s\"", path.c_str());
-			exit(0);
-		}
+			return false;
+		}*/
 
 		curPath = tempPath;
 		this->path = currentPath;
@@ -794,22 +796,94 @@ void FAT_32::tree()
 	printRDET(*curPath);
 }
 
-std::vector<BYTE> FAT_32::get_data(const std::string &name)
+void FAT_32::read(const std::string& name)
 {
+	std::string tempName = name;
+	if (tempName.front() == '\"' && tempName.back() == '\"')
+	{
+		tempName.erase(0, 1);
+		tempName.pop_back();
+	}
 	std::vector<BYTE> res;
-	if (curPath->name == name)
+	if (curPath->name == tempName)
+	{
 		res = printFolderInfo(curPath);
-
+	}
 	for (auto subFolder : curPath->subItem)
 	{
-		if (subFolder->name == name)
+		if (subFolder->name == tempName)
 		{
-			printf("Found!\n");
+			cd(subFolder->name);
 			res = printFolderInfo(subFolder);
+			cd("..");
 		}
-
 	}
 
 
-	return res;
+	for (char content : res)
+		printf("%c", content);
+	printf("\n");
+	
+}
+
+// support
+vector<string> splitString(const string& input, string delimeter) {
+	vector<string> tokens;
+	// if (input.back() == '\n')
+	//     input.pop_back();
+
+
+	std::string tempInput = input;
+	size_t first = input.find_first_of('\"');
+	size_t second = input.find_first_of('\"', first + 1);
+	if (first != string::npos && second != string::npos)
+	{
+		for (int i = first; i < second; ++i)
+			if (tempInput[i] == ' ')
+				tempInput[i] = -1;
+	}
+
+
+	/*size_t startPos = 0;
+	size_t foundPos = input.find_first_of(delimeter);
+
+	while (foundPos != string::npos) {
+		
+		tokens.push_back(input.substr(startPos, foundPos - startPos));
+		startPos = foundPos + 1;
+		foundPos = input.find_first_of(delimeter, startPos);
+	}
+
+	tokens.push_back(input.substr(startPos));
+	
+	
+	return tokens;*/
+
+	size_t startPos = 0;
+	size_t foundPos = tempInput.find_first_of(delimeter);
+
+	while (foundPos != string::npos) {
+
+		tokens.push_back(tempInput.substr(startPos, foundPos - startPos));
+		startPos = foundPos + 1;
+		foundPos = tempInput.find_first_of(delimeter, startPos);
+	}
+
+	tokens.push_back(tempInput.substr(startPos));
+
+	
+	for (int i = 0; i < tokens.size(); ++i)
+	{
+		for (int j = 0; j < tokens[i].size(); ++j)
+		{
+			if (tokens[i][j] == -1)
+				tokens[i][j] = ' ';
+		}
+	}
+
+	return tokens;
+}
+bool compareWstrVsStr(const wstring& wstr, const string& str) {
+	wstring str2(str.begin(), str.end());
+	return wstr == str2;
 }

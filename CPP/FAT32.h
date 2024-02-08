@@ -1,11 +1,11 @@
 #pragma once
 #include "base.h"
 
-unsigned long littleEdian(const BYTE* arr, unsigned int n);
-unsigned long littleEdian(const std::vector<BYTE>& arr);
-std::string hexToBin(const BYTE& hex);
-std::string normalization(const std::string& src);
-std::string toUpercase(const std::string& src);
+//unsigned long littleEdian(const BYTE* arr, unsigned int n);
+//unsigned long littleEdian(const std::vector<BYTE>& arr);
+//std::string hexToBin(const BYTE& hex);
+//std::string normalization(const std::string& src);
+//std::string toUpercase(const std::string& src);
 
 struct BootSector
 {
@@ -53,7 +53,6 @@ public:
 	void print(bool isFull = true);
 	bool isFolder();
 	void getChild(std::vector<CFolder*>);
-	void setParent(CFolder* parent);
 	bool canPrint();
 	CFolder* findByName(std::string fileName, bool searchAll = true);
 	~CFolder();
@@ -103,7 +102,8 @@ public:
 	void ls();
 	void tree();
 
-	vector<BYTE> get_data(const string& name);
+	/*vector<BYTE> get_data(const string& name);*/
+	void read(const string& name);
 };
 
 

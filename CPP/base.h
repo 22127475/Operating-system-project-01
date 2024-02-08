@@ -36,24 +36,24 @@ bool compareWstrVsStr(const wstring &wstr, const string &str);
 
 // split A/B, A\B => [A] [B]
 // split cd A => [cd] [A] [\n]
-vector<string> splitString(const string &input, string delimeter) {
-    vector<string> tokens;
-    // if (input.back() == '\n')
-    //     input.pop_back();
-    size_t startPos = 0;
-    size_t foundPos = input.find_first_of(delimeter);
-
-    while (foundPos != string::npos) {
-        tokens.push_back(input.substr(startPos, foundPos - startPos));
-        startPos = foundPos + 1;
-        foundPos = input.find_first_of(delimeter, startPos);
-    }
-
-    tokens.push_back(input.substr(startPos));
-
-    return tokens;
-}
-bool compareWstrVsStr(const wstring &wstr, const string &str) {
-    wstring str2(str.begin(), str.end());
-    return wstr == str2;
-}
+//vector<string> splitString(const string &input, string delimeter) {
+//    vector<string> tokens;
+//    // if (input.back() == '\n')
+//    //     input.pop_back();
+//    size_t startPos = 0;
+//    size_t foundPos = input.find_first_of(delimeter);
+//
+//    while (foundPos != string::npos) {
+//        tokens.push_back(input.substr(startPos, foundPos - startPos));
+//        startPos = foundPos + 1;
+//        foundPos = input.find_first_of(delimeter, startPos);
+//    }
+//
+//    tokens.push_back(input.substr(startPos));
+//
+//    return tokens;
+//}
+//bool compareWstrVsStr(const wstring &wstr, const string &str) {
+//    wstring str2(str.begin(), str.end());
+//    return wstr == str2;
+//}

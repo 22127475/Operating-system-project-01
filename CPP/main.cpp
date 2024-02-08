@@ -1,5 +1,5 @@
-#include "ntfs.cpp"
-#include "FAT32.cpp"
+//#include "ntfs.cpp"
+#include "FAT32.h"
 
 
 //viet thong tin thanh vien nhom
@@ -99,7 +99,7 @@ void run(Volume *volume) {
             wstring path = volume->cwd();
             wprintf(L"%ls\n", path.c_str());
         }
-        else if (command[0] == "ls")
+        else if (command[0] == "ls" || command[0] == "dir")
             volume->ls();
         else if (command[0] == "tree")
             volume->tree();
@@ -107,6 +107,8 @@ void run(Volume *volume) {
             // print_data(volume, command[1]);
             try_read(volume, command[1]);
         }
+        else if (command[0] == "cls")
+            system("cls");
         else if (command[0] == "help" || command[0] == "?")
             print_help();
         else if (command[0] == "quit") {
@@ -142,8 +144,8 @@ void run(Volume *volume) {
 // }
 
 int main() {
-    string name = "D";
-    Volume *volume = new NTFS(name);
+    string name = "F";
+    Volume *volume = new FAT_32(name);
 
     run(volume);
     // volume->cd("A/B");
