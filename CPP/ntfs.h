@@ -72,6 +72,7 @@ public:
 
 class NTFS : public Volume {
 public:
+    string disk_name;
     FILE *volume;
 
     vector<BYTE> vbr;
@@ -127,5 +128,6 @@ public: //? polymorphism
     void tree() {
         print_tree();
     }
+    void read(const string &name);
 };
 

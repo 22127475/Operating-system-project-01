@@ -649,6 +649,7 @@ CFolder *FAT_32::findFolderByName(CFolder &folder, std::string folderName, bool 
 
 void FAT_32::print_base_in4()
 {
+	Volume::print_base_in4();
 	printf("%C:\\ \n", this->diskName[4]);
 	printf("Boot sector: \n");
 	this->printBootSector();

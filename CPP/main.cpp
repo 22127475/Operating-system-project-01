@@ -2,16 +2,28 @@
 #include "FAT32.cpp"
 
 
-//todo viet thong tin thanh vien nhom
-//todo cwd bỏ \ ở cuối nma ở gốc thì có :))
-//todo chinh cho cd absolute path, bỏ tên ổ đĩa thành biến trong NTFS để cd thẳng ra ngoài
-//! cd folder của folder con không tồn tại => recover trc khi cd
-//todo chỉnh in cây không dùng extended ascii (+, -, |)
-//todo chỉnh read: folder -> in ra file con (lenh ls), file -> in ra nội dung
+//viet thong tin thanh vien nhom
+//cwd bỏ \ ở cuối nma ở gốc thì có :))
+//cd folder của folder con không tồn tại => recover trc khi cd
+//chinh cho cd absolute path, bỏ tên ổ đĩa thành biến trong NTFS để cd thẳng ra ngoài
+//chỉnh in cây không dùng extended ascii (+, -, |)
+// chỉnh read: folder -> in ra file con (lenh ls), file -> in ra nội dung
 
 
-//todo cua Huy
-//! cd folder bỏ dấu chấm
+//cua Huy
+//cd folder bỏ dấu chấm
+
+void print_team() {
+    printf("Members:\n");
+    printf("22127026                 On Gia Bao\n");
+    printf("22127275              Tran Anh Minh\n");
+    printf("22127280       Doan Dang Phuong Nam\n");
+    printf("22127465          Bui Nguyen Lan Vy\n");
+    printf("22127475               Diep Gia Huy\n");
+
+    printf("\n");
+}
+
 
 int checkVolume(string name) {
     name = "\\\\.\\" + name + ":";
@@ -26,7 +38,6 @@ int checkVolume(string name) {
 
     fseek(volume, 0x52, 0);
     fread(&format[0], 1, 8, volume);
-    printf("%s\n", format.c_str());
 
     if (format == "FAT32   ") {
         fclose(volume);
@@ -35,7 +46,6 @@ int checkVolume(string name) {
 
     fseek(volume, 0x3, 0);
     fread(&format[0], 1, 8, volume);
-    printf("%s\n", format.c_str());
 
     if (format == "NTFS    ") {
         fclose(volume);
@@ -44,6 +54,14 @@ int checkVolume(string name) {
     return 0; // if not both fat32 and ntfs
 }
 
+void try_read(Volume *volume, string name) {
+    try {
+        volume->read(name);
+    }
+    catch (const char *msg) {
+        fprintf(stderr, "Error: %s\n", msg);
+    }
+}
 void print_help() {
     printf("Supported commands:\n");
     printf("  cd <path> - change directory\n");
@@ -52,21 +70,13 @@ void print_help() {
     printf("  tree - print directory tree\n");
     printf("  read <file> - print file contents\n");
 }
-void print_data(Volume *volume, string name) {
-    try {
-        vector<BYTE> data = volume->get_data(name);
-        for (auto &i : data)
-            printf("%c", i);
-        printf("\n");
-    }
-    catch (const char *msg) {
-        fprintf(stderr, "Error: %s\n", msg);
-    }
-}
 void run(Volume *volume) {
     system("cls");
 
     //todo in thong tin nhom'
+    print_team();
+
+
     volume->print_base_in4();
     while (true) {
         wprintf(L"\n%ls", volume->cwd().c_str());
@@ -93,8 +103,10 @@ void run(Volume *volume) {
             volume->ls();
         else if (command[0] == "tree")
             volume->tree();
-        else if (command[0] == "read")
-            print_data(volume, command[1]);
+        else if (command[0] == "read") {
+            // print_data(volume, command[1]);
+            try_read(volume, command[1]);
+        }
         else if (command[0] == "help" || command[0] == "?")
             print_help();
         else if (command[0] == "quit") {
@@ -106,33 +118,43 @@ void run(Volume *volume) {
     }
 }
 
-int main() {
-    string name = "D";
-    Volume *volume;
-
-    int check = checkVolume(name);
-    if (check == 1) {
-        // fprintf(stderr, "It is FAT32\n");
-        volume = new FAT_32(name);
-        run(volume);
-    }
-    else if (check == 2) {
-        // fprintf(stderr, "It is NTFS\n\n");
-        volume = new NTFS(name);
-        run(volume);
-    }
-    else {
-        fprintf(stderr, "Error: Not FAT32 or NTFS\n");
-        exit(1);
-    }
-
-    return 0;
-}
 // int main() {
-//     string name = "E";
-//     Volume * volume = new FAT_32(name);
+//     string name = "D";
+//     Volume *volume;
 
-//     run(volume);
+//     int check = checkVolume(name);
+//     if (check == 1) {
+//         // fprintf(stderr, "It is FAT32\n");
+//         volume = new FAT_32(name);
+//         run(volume);
+//     }
+//     else if (check == 2) {
+//         // fprintf(stderr, "It is NTFS\n\n");
+//         volume = new NTFS(name);
+//         run(volume);
+//     }
+//     else {
+//         fprintf(stderr, "Error: Not FAT32 or NTFS\n");
+//         exit(1);
+//     }
 
 //     return 0;
 // }
+
+int main() {
+    string name = "D";
+    Volume *volume = new NTFS(name);
+
+    run(volume);
+    // volume->cd("A/B");
+    // wprintf(L"%ls\n", volume->cwd().c_str());
+
+    // volume->cd("\\");
+    // wprintf(L"%ls\n", volume->cwd().c_str());
+
+    // volume->cd("A/B/C");
+    // wprintf(L"%ls\n", volume->cwd().c_str());
+    // volume->read("F.txt");
+
+    return 0;
+}
