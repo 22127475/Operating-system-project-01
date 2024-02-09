@@ -109,7 +109,7 @@ void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
         extract_data(data, start);
     else if (type_id == 0x90) { //? No data attribute => A directory
         resident = true;
-        num_cluster = start_cluster = 0;
+        // num_cluster = start_cluster = 0;
         real_size = 0;
         attribute.push_back("DIRECTORY");
     }
@@ -125,16 +125,30 @@ void MFT_Entry::extract_data(vector<BYTE> &data, uint64_t start) {
         for (int i = 0; i < real_size; ++i)
             content[i] = data[beginFN + i];
 
-        num_cluster = start_cluster = 0; // Resident
+        // num_cluster = start_cluster = 0; // Resident
     }
-    else { // Non-resident, no name
-        BYTE datarun_header = data[start + 0x40];
-        BYTE length = datarun_header & 0xF; // 4 low bits
-        BYTE offset = datarun_header >> 4; // 4 high bits
+    // else { // Non-resident, no name
+    //     BYTE datarun_header = data[start + 0x40];
+    //     BYTE length = datarun_header & 0xF; // 4 low bits
+    //     BYTE offset = datarun_header >> 4; // 4 high bits
 
+    //     real_size = cal(data, start + 0x30, start + 0x38);
+    //     num_cluster = cal(data, start + 0x41, start + 0x41 + length);
+    //     start_cluster = cal(data, start + 0x41 + length, start + 0x41 + length + offset);
+    // }
+    else {
         real_size = cal(data, start + 0x30, start + 0x38);
-        num_cluster = cal(data, start + 0x41, start + 0x41 + length);
-        start_cluster = cal(data, start + 0x41 + length, start + 0x41 + length + offset);
+
+        start += 0x40;
+        while (data[start] != 0x00) {
+            BYTE datarun_header = data[start];
+            BYTE length = datarun_header & 0xF; // 4 low bits
+            BYTE offset = datarun_header >> 4; // 4 high bits
+
+            num_cluster.push_back(cal(data, start + 0x1, start + 0x1 + length));
+            start_cluster.push_back(cal(data, start + 0x1 + length, start + 0x1 + length + offset));
+            start += 1 + length + offset;
+        }
     }
 }
 
@@ -331,16 +345,28 @@ void NTFS::read(const string &name) {
         return;
     }
 
-    if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
-        mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
-    vector<BYTE> data(mft.real_size);
-    uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
+    // if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
+    //     mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
+    // vector<BYTE> data(mft.real_size);
+    // uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
 
-    fseeko64(volume, offset, 0);
-    size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
+    // fseeko64(volume, offset, 0);
+    // size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
 
-    for (auto &x : data)
-        printf("%c", x);
+    // for (auto &x : data)
+    //     printf("%c", x);
+    // printf("\n");
+
+    for (int i = 0; i < mft.num_cluster.size(); i++) {
+        uint64_t size = mft.num_cluster[i] * bytes_per_sector * sectors_per_cluster;
+        uint64_t offset = mft.start_cluster[i] * bytes_per_sector * sectors_per_cluster;
+        vector<BYTE> data(size);
+        fseeko64(volume, offset, 0);
+        size_t bytesRead = fread(data.data(), 1, size, volume);
+
+        for (auto &x : data)
+            printf("%c", x);
+    }
     printf("\n");
     return;
 }

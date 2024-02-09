@@ -22,29 +22,27 @@ int checkVolume(string name) {
         exit(1);
     }
 
-    string format = "        ";
+    string format, buffer;
+    format.resize(8);
+
+    buffer.resize(3);
+    fread(&buffer[0], 1, 3, volume);
     fread(&format[0], 1, 8, volume);
+    if (format == "NTFS    ") {
+        fclose(volume);
+        return 2;
+    }
 
-
-
-    //Read temporarily
-
-    fseek(volume, 0x52, 0);
+    buffer.resize(0x52 - 0xB);
+    fread(&buffer[0], 1, 0x52 - 0xB, volume);
     fread(&format[0], 1, 8, volume);
-
     if (format == "FAT32   ") {
         fclose(volume);
         return 1;
     }
 
-    fseek(volume, 0x3, 0);
-    fread(&format[0], 1, 8, volume);
-
-    if (format == "NTFS    ") {
-        fclose(volume);
-        return 2;
-    }
-    return 0; // if not both fat32 and ntfs
+    fclose(volume);
+    return 0;
 }
 
 void try_read(Volume *volume, string name) {
