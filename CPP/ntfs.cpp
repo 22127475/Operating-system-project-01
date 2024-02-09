@@ -327,7 +327,11 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
 //     return data;
 // }
 void NTFS::read(const string &name) {
-    uint64_t des = find_mft_entry(name);
+    string tmp_path = name;
+    if (tmp_path[0] == '\"' && tmp_path[tmp_path.size() - 1] == '\"')
+        tmp_path = tmp_path.substr(1, tmp_path.size() - 2);
+
+    uint64_t des = find_mft_entry(tmp_path);
     if (des == 0)
         throw "Error: File not found";
 
@@ -393,7 +397,7 @@ bool NTFS::change_dir(string path) {
             continue;
         else {
             uint64_t des = find_mft_entry(x);
-            if (des == 0)
+            if (des == 0 || !mft_entries[des].is_directory())
             {
                 current_node = temp;
                 return false;

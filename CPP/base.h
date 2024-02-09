@@ -36,7 +36,7 @@ bool compareWstrVsStr(const wstring &wstr, const string &str);
 
 string trim(const string &str) {
     size_t start = str.find_first_not_of(" \t\n\r");
-    size_t end = str.find_last_not_of(" \t\n\r");
+    size_t end = str.find_last_not_of(" \t\n\r\\/");
 
     if (start == string::npos || end == string::npos)
         return ""; // No non-whitespace characters found
@@ -54,7 +54,6 @@ vector<string> splitString(const string &input, string delimeter, bool all) {
 
     size_t startPos = 0;
     size_t foundPos = tmp.find_first_of(delimeter);
-
 
     if (all)
         while (foundPos != string::npos) {

@@ -64,7 +64,7 @@ void try_cd(Volume *volume, vector<string> command) {
     }
 
     if (!volume->cd(command[1]))
-        fprintf(stderr, "Error: No such directory\n");
+        fprintf(stderr, "Error: No such directory found\n");
 }
 void print_help() {
     printf("Supported commands:\n");
