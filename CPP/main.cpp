@@ -26,16 +26,20 @@ int checkVolume(string name) {
     format.resize(8);
 
     buffer.resize(3);
-    fread(buffer.data(), 1, 3, volume);
-    fread(format.data(), 1, 8, volume);
+    //fread(buffer.data(), 1, 3, volume);
+    fread(&buffer[0], 1, 3, volume);
+    //fread(format.data(), 1, 8, volume);
+    fread(&format[0], 1, 8, volume);
     if (format == "NTFS    ") {
         fclose(volume);
         return 2;
     }
 
     buffer.resize(0x52 - 0xB);
-    fread(buffer.data(), 1, 0x52 - 0xB, volume);
-    fread(format.data(), 1, 8, volume);
+    //fread(buffer.data(), 1, 0x52 - 0xB, volume);
+    fread(&buffer[0], 1, 0x52 - 0xB, volume);
+    //fread(format.data(), 1, 8, volume);
+    fread(&format[0], 1, 8, volume);
     if (format == "FAT32   ") {
         fclose(volume);
         return 1;
@@ -176,11 +180,11 @@ int main() {
     return 0;
 }
 
-// int main() {
-//     string name = "D";
-//     // Volume *volume = new FAT_32(name);
-//     Volume *volume = new NTFS(name);
-//     run(volume);
+ //int main() {
+ //    string name = "F";
+ //     Volume *volume = new FAT_32(name);
+ //    //Volume *volume = new NTFS(name);
+ //    run(volume);
 
-//     return 0;
-// }
+ //    return 0;
+ //}
