@@ -94,15 +94,11 @@ public:
 
 	// Volume
 	std::string csd();
-
 	void print_base_in4();
-
 	bool cd(string path);
 	wstring cwd();
 	void ls();
 	void tree();
-
-	/*vector<BYTE> get_data(const string& name);*/
 	void read(const string& name);
 };
 
