@@ -34,7 +34,6 @@ public:
 vector<string> splitString(const string &input, string delimeter = "/\\", bool all = true);
 bool compareWstrVsStr(const wstring &wstr, const string &str);
 
-
 string trim(const string &str) {
     size_t start = str.find_first_not_of(" \t\n\r");
     size_t end = str.find_last_not_of(" \t\n\r\\/");

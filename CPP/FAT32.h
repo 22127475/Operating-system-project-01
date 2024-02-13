@@ -47,13 +47,15 @@ public:
 	std::string size;
 	std::vector<long> cluster;
 	std::vector<CFolder* > subItem;
+	int index;
 public:
 	CFolder();
-	CFolder(const std::string& name, const std::string& state, const std::string& size, const std::vector<long>& cluster);
+	CFolder(const std::string& name, const std::string& state, const std::string& size, const std::vector<long>& cluster,const int& index);
 	void print(bool isFull = true);
 	bool isFolder();
 	void getChild(std::vector<CFolder*>);
 	bool canPrint();
+	CFolder* findByID(const int &id);
 	CFolder* findByName(std::string fileName, bool searchAll = true);
 	~CFolder();
 
@@ -84,7 +86,7 @@ public:
 	std::vector<int> numberOfFile(long offset);
 	std::string readVFAT(FILE* f);
 	//std::vector<CFolder*> readRDET(long offset);
-	void readRDET(long offset, CFolder& folder);
+	void readRDET(long offset, CFolder& folder, int& idx);
 	void makeRDET();
 	void printRDET(CFolder& folder, std::string time = "", bool last = false);
 	void printRDET();
