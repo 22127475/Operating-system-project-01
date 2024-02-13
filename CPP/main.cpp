@@ -26,16 +26,16 @@ int checkVolume(string name) {
     format.resize(8);
 
     buffer.resize(3);
-    fread(buffer.data(), 1, 3, volume);
-    fread(format.data(), 1, 8, volume);
+    fread(&buffer[0], 1, 3, volume);
+    fread(&format[0], 1, 8, volume);
     if (format == "NTFS    ") {
         fclose(volume);
         return 2;
     }
 
     buffer.resize(0x52 - 0xB);
-    fread(buffer.data(), 1, 0x52 - 0xB, volume);
-    fread(format.data(), 1, 8, volume);
+    fread(&buffer[0], 1, 0x52 - 0xB, volume);
+    fread(&format[0], 1, 8, volume);
     if (format == "FAT32   ") {
         fclose(volume);
         return 1;
@@ -64,7 +64,7 @@ void try_cd(Volume *volume, vector<string> command) {
     }
 
     if (!volume->cd(command[1]))
-        fprintf(stderr, "Error: No such directory\n");
+        fprintf(stderr, "Error: No such directory found\n");
 }
 void print_help() {
     printf("Supported commands:\n");
@@ -80,8 +80,10 @@ void print_help() {
 void run(Volume *volume) {
 
     volume->print_base_in4();
+    printf("\nEnter '?' or 'help' to view the supported commands\n");
     while (true) {
-        wprintf(L"\n%ls", volume->cwd().c_str());
+        // printf("\n%s", Utf16toUtf8(volume->cwd()).c_str());
+        wprintf(L"%ls", (volume->cwd()).c_str());
         printf(" >> ");
 
         char buffer[256];
@@ -94,6 +96,7 @@ void run(Volume *volume) {
 
         else if (command[0] == "cwd")
             wprintf(L"%ls\n", (volume->cwd()).c_str());
+            // printf("%s\n", Utf16toUtf8(volume->cwd()).c_str());
 
         else if (command[0] == "ls" || command[0] == "dir")
             volume->ls();

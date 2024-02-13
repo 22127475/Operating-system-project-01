@@ -6,8 +6,9 @@
 #include <string>
 #include <map>
 #include <windows.h>
-// #include <iostream>
 
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 // using BYTE = unsigned char;
@@ -36,16 +37,16 @@ bool compareWstrVsStr(const wstring &wstr, const string &str);
 
 string trim(const string &str) {
     size_t start = str.find_first_not_of(" \t\n\r");
-    size_t end = str.find_last_not_of(" \t\n\r");
+    size_t end = str.find_last_not_of(" \t\n\r\\/");
 
     if (start == string::npos || end == string::npos)
         return ""; // No non-whitespace characters found
 
     return str.substr(start, end - start + 1);
 }
+vector<string> splitString(const string &input, string delimeter, bool all) {
 // split A/B, A\B => [A] [B]
 // split cd A => [cd] [A] [\n]
-vector<string> splitString(const string &input, string delimeter, bool all) {
     vector<string> tokens;
 
     string tmp = trim(input);
@@ -54,7 +55,6 @@ vector<string> splitString(const string &input, string delimeter, bool all) {
 
     size_t startPos = 0;
     size_t foundPos = tmp.find_first_of(delimeter);
-
 
     if (all)
         while (foundPos != string::npos) {
@@ -74,4 +74,9 @@ vector<string> splitString(const string &input, string delimeter, bool all) {
 bool compareWstrVsStr(const wstring &wstr, const string &str) {
     wstring str2(str.begin(), str.end());
     return wstr == str2;
+}
+
+string Utf16toUtf8(const wstring& wstr) {
+    wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+    return convert.to_bytes(wstr);
 }

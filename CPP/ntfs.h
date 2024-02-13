@@ -38,8 +38,10 @@ public:
     uint64_t real_size;
     vector<BYTE> content; // Resident, no name
     // Non-resident, no name
-    uint64_t start_cluster;
-    uint64_t num_cluster;
+    vector<uint64_t> start_cluster;
+    vector<uint64_t> num_cluster;
+    // uint64_t start_cluster;
+    // uint64_t num_cluster;
 
     // Sub-files
     vector<uint64_t> sub_files_number;

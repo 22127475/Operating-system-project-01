@@ -109,7 +109,7 @@ void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
         extract_data(data, start);
     else if (type_id == 0x90) { //? No data attribute => A directory
         resident = true;
-        num_cluster = start_cluster = 0;
+        // num_cluster = start_cluster = 0;
         real_size = 0;
         attribute.push_back("DIRECTORY");
     }
@@ -125,16 +125,30 @@ void MFT_Entry::extract_data(vector<BYTE> &data, uint64_t start) {
         for (int i = 0; i < real_size; ++i)
             content[i] = data[beginFN + i];
 
-        num_cluster = start_cluster = 0; // Resident
+        // num_cluster = start_cluster = 0; // Resident
     }
-    else { // Non-resident, no name
-        BYTE datarun_header = data[start + 0x40];
-        BYTE length = datarun_header & 0xF; // 4 low bits
-        BYTE offset = datarun_header >> 4; // 4 high bits
+    // else { // Non-resident, no name
+    //     BYTE datarun_header = data[start + 0x40];
+    //     BYTE length = datarun_header & 0xF; // 4 low bits
+    //     BYTE offset = datarun_header >> 4; // 4 high bits
 
+    //     real_size = cal(data, start + 0x30, start + 0x38);
+    //     num_cluster = cal(data, start + 0x41, start + 0x41 + length);
+    //     start_cluster = cal(data, start + 0x41 + length, start + 0x41 + length + offset);
+    // }
+    else {
         real_size = cal(data, start + 0x30, start + 0x38);
-        num_cluster = cal(data, start + 0x41, start + 0x41 + length);
-        start_cluster = cal(data, start + 0x41 + length, start + 0x41 + length + offset);
+
+        start += 0x40;
+        while (data[start] != 0x00) {
+            BYTE datarun_header = data[start];
+            BYTE length = datarun_header & 0xF; // 4 low bits
+            BYTE offset = datarun_header >> 4; // 4 high bits
+
+            num_cluster.push_back(cal(data, start + 0x1, start + 0x1 + length));
+            start_cluster.push_back(cal(data, start + 0x1 + length, start + 0x1 + length + offset));
+            start += 1 + length + offset;
+        }
     }
 }
 
@@ -267,7 +281,7 @@ void NTFS::print_vbr() {
 }
 void NTFS::print_base_in4() {
     Volume::print_base_in4();
-    printf("Disk: %s\\\n", disk_name.c_str());
+    printf("\nDisk: %s\\\n", disk_name.c_str());
     printf("OEM ID: %s\n", oem_id.c_str());
     printf("Bytes per sector: %u\n", bytes_per_sector);
     printf("Sectors per cluster: %u\n", sectors_per_cluster);
@@ -313,7 +327,11 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
 //     return data;
 // }
 void NTFS::read(const string &name) {
-    uint64_t des = find_mft_entry(name);
+    string tmp_path = name;
+    if (tmp_path[0] == '\"' && tmp_path[tmp_path.size() - 1] == '\"')
+        tmp_path = tmp_path.substr(1, tmp_path.size() - 2);
+
+    uint64_t des = find_mft_entry(tmp_path);
     if (des == 0)
         throw "Error: File not found";
 
@@ -331,16 +349,28 @@ void NTFS::read(const string &name) {
         return;
     }
 
-    if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
-        mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
-    vector<BYTE> data(mft.real_size);
-    uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
+    // if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
+    //     mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
+    // vector<BYTE> data(mft.real_size);
+    // uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
 
-    fseeko64(volume, offset, 0);
-    size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
+    // fseeko64(volume, offset, 0);
+    // size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
 
-    for (auto &x : data)
-        printf("%c", x);
+    // for (auto &x : data)
+    //     printf("%c", x);
+    // printf("\n");
+
+    for (int i = 0; i < mft.num_cluster.size(); i++) {
+        uint64_t size = mft.num_cluster[i] * bytes_per_sector * sectors_per_cluster;
+        uint64_t offset = mft.start_cluster[i] * bytes_per_sector * sectors_per_cluster;
+        vector<BYTE> data(size);
+        fseeko64(volume, offset, 0);
+        size_t bytesRead = fread(data.data(), 1, size, volume);
+
+        for (auto &x : data)
+            printf("%c", x);
+    }
     printf("\n");
     return;
 }
@@ -367,7 +397,7 @@ bool NTFS::change_dir(string path) {
             continue;
         else {
             uint64_t des = find_mft_entry(x);
-            if (des == 0)
+            if (des == 0 || !mft_entries[des].is_directory())
             {
                 current_node = temp;
                 return false;
@@ -416,6 +446,7 @@ void NTFS::list(bool print_hidden) {
 
         wstring name = mft_entries[x].file_name;
         wprintf(L"%ls\n", name.c_str());
+        // printf("%s\n", Utf16toUtf8(name).c_str());
     }
 }
 void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
@@ -424,6 +455,7 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
 
 
     wprintf(L"%ls\n", mft.file_name.c_str());
+    // printf("%s\n", Utf16toUtf8(mft.file_name).c_str());
     if (mft.is_archive())
         return;
 
@@ -465,21 +497,3 @@ wstring fromUnicode(vector<BYTE> &BYTEs) {
     return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
 }
 
-// Main
-// int main() {
-//     string disk = "D";
-//     NTFS ntfs(disk);
-//     // ntfs.print_vbr();
-//     // ntfs.print_ntfs_in4();
-//     // ntfs.change_dir("Games");
-//     // ntfs.change_dir("A");
-//     // wprintf(L"%ls\n", ntfs.get_current_path().c_str());
-//     ntfs.list();
-//     // ntfs.tree();
-//     // vector<BYTE> data = ntfs.get_data("F.txt");
-//     // for (auto &x : data)
-//     //     printf("%c", x);
-//     // printf("\n");
-
-//     return 0;
-// }
