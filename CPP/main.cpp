@@ -58,6 +58,11 @@ void try_read(Volume *volume, string name) {
     }
 }
 void try_cd(Volume *volume, vector<string> command) {
+    if (command[0] == "cd.." || command[0] == "cd." || command[0] == "cd\\") {
+        volume->cd(command[0].substr(2));
+        return;
+    }
+    
     if (command.size() == 1) {
         fprintf(stderr, "Error: No path specified\n");
         return;
@@ -69,17 +74,19 @@ void try_cd(Volume *volume, vector<string> command) {
 
     if (!volume->cd(command[1]))
         fprintf(stderr, "Error: No such directory found\n");
+    // volume->cd(command[1]);
 }
 void print_help() {
     printf("Supported commands:\n");
     printf("  cd <path> - change directory\n");
+    printf("  cd -i <ID> or cd --index <ID> - change directory by index\n");
     printf("  cwd - print current working directory\n");
     printf("  ls - list directory contents\n");
     printf("  dir - list directory contents\n");
     printf("  tree - print directory tree\n");
     printf("  read <file> - print file contents\n");
-    printf("  exit - exit the program\n");
-
+    printf("  quit - exit the program\n");
+    printf("  -h or --help or ? - print the support commands\n");
 }
 void run(Volume *volume) {
 
@@ -93,9 +100,9 @@ void run(Volume *volume) {
         char buffer[256];
         fgets(buffer, 256, stdin);
         // string line(l);
-        vector<string> command = splitString(string(buffer), " \n", false);
+        vector<string> command = splitString(string(buffer), " \n", false, false);
 
-        if (command[0] == "cd")
+        if (command[0] == "cd" || command[0] == "cd.." || command[0] == "cd." || command[0] == "cd\\")
             try_cd(volume, command);
 
         else if (command[0] == "cwd")
@@ -111,7 +118,7 @@ void run(Volume *volume) {
 
         else if (command[0] == "cls")
             system("cls");
-        else if (command[0] == "help" || command[0] == "?")
+        else if (command[0] == "-h" || command[0] == "--help" || command[0] == "?")
             print_help();
         else if (command[0] == "exit" || command[0] == "quit") {
             printf("Goodbye\n");

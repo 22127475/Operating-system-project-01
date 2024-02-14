@@ -288,7 +288,7 @@ void NTFS::print_base_in4() {
     printf("Reserved sectors: %u\n", reserved_sectors);
     printf("Total sectors: %u\n", total_sectors);
     printf("First cluster of MFT: %u\n", mft_cluster_number);
-    printf("First cluseter of MFT mirror: %u\n", mft_mirror_cluster_number);
+    printf("First cluster of MFTMirr: %u\n", mft_mirror_cluster_number);
     printf("MFT record size: %d\n", mft_record_size);
 }
 
@@ -380,7 +380,23 @@ bool NTFS::change_dir(string path) {
         current_node.resize(1);
         return true;
     }
-    vector<string> paths = splitString(path);
+    vector<string> paths = splitString(path, " ", 0);
+    if (paths[0] == "-i" || paths[0] == "--index") {
+        if (paths.size() < 2) {
+            fprintf(stderr, "Error: No index specified\n");
+            return false;
+        }
+        uint64_t index = stoull(paths[1]);
+        for (auto &x : mft_entries[current_node.back()].sub_files_number)
+            if (mft_entries[x].mft_record_number == index && mft_entries[x].is_directory()) {
+                current_node.push_back(x);
+                return true;
+            }
+        // fprintf(stderr, "Error: No such directory found\n");
+        return false;
+    }
+
+    paths = splitString(path);
     vector<uint64_t> temp = current_node; // Backup the current node
 
     if (paths[0] == disk_name) { // Absolute path
@@ -393,6 +409,7 @@ bool NTFS::change_dir(string path) {
             if (current_node.size() > 1)
                 current_node.pop_back();
         }
+
         else if (x == ".")
             continue;
         else {
@@ -400,6 +417,7 @@ bool NTFS::change_dir(string path) {
             if (des == 0 || !mft_entries[des].is_directory())
             {
                 current_node = temp;
+                // fprintf(stderr, "Error: No such directory found\n");
                 return false;
             }
             current_node.push_back(des);
@@ -437,12 +455,15 @@ string attribute_bit(vector<string> &attribute) {
 void NTFS::list(bool print_hidden) {
     uint64_t node = current_node.back();
 
-    printf("Attributes\tFile name\n");
+    printf(" Mode \t ID \tFile name\n");
+    printf("------\t----\t---------\n");
     for (auto &x : mft_entries[node].sub_files_number) {
         if (!print_hidden && mft_entries[x].is_hidden_system())
             continue;
         string attr = attribute_bit(mft_entries[x].attribute);
         printf("%s\t\t", attr.c_str());
+        uint64_t id = mft_entries[x].mft_record_number;
+        printf("%llu\t", id);
 
         wstring name = mft_entries[x].file_name;
         wprintf(L"%ls\n", name.c_str());
@@ -477,6 +498,11 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
             print_tree(mft.sub_files_number[i], prefix + "   ", true);
         }
     }
+}
+
+//! Here
+void NTFS::info(const string &path) {
+
 }
 
 // Support functions
