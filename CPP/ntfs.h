@@ -132,6 +132,7 @@ public: //? polymorphism
         print_tree();
     }
     void read(const string &name);
+    void info(const string &path = "");
 };
 
 // Support functions

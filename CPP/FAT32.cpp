@@ -81,17 +81,21 @@ CFolder::CFolder()
 	state = "";
 	size = "";
 	cluster = {};
+	index = 0;
 }
-CFolder::CFolder(const std::string &name, const std::string &state, const std::string &size, const std::vector<long> &cluster)
+CFolder::CFolder(const std::string &name, const std::string &state, const std::string &size, const std::vector<long> &cluster,const int& index)
 {
 	this->name = name;
 	this->state = state;
 	this->size = size;
 	this->cluster = cluster;
+	this->index = index;
+
 }
 
 bool CFolder::canPrint()
 {
+	
 	bool res = false;
 	for (int i = 0; i < this->name.size(); ++i)
 	{
@@ -100,13 +104,8 @@ bool CFolder::canPrint()
 
 	}
 
-<<<<<<< Updated upstream
-	if (state[5] == '1')
-		return false;
-=======
 	/*if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 		return false;*/
->>>>>>> Stashed changes
 
 	return res;
 }
@@ -121,28 +120,11 @@ void CFolder::print(bool isFull)
 			printf("Name: ");
 		}
 		printf("%s\n", this->name.c_str());
-
 		if (isFull)
 		{
-<<<<<<< Updated upstream
-
-			/*for (int i = 0; i < idx; ++i)
-				printf(" ");*/
-
-			printf("State: %s\n", this->state.c_str());
-
-			//if (!this->isFolder())
-			/*for (int i = 0; i < idx; ++i)
-				printf(" ");*/
-
-=======
 			
 			printf("State: %s\n", binToState().c_str());
->>>>>>> Stashed changes
 			printf("Size: %s\n", this->size.c_str());
-			//for (int i = 0; i < idx; ++i)
-			//	printf(" ");
-
 			printf("Cluster: ");
 			for (int i = 0; i < cluster.size() - 1; ++i)
 			{
@@ -152,11 +134,15 @@ void CFolder::print(bool isFull)
 				printf("%d", cluster[cluster.size() - 1]);
 			printf("\n");
 		}
-
-
-
 	}
 
+}
+CFolder* CFolder::findByID(const int& id)
+{
+	if (this->index == id)
+		return this;
+	
+	return nullptr;
 }
 
 CFolder *CFolder::findByName(std::string fileName, bool searchAll)
@@ -207,7 +193,6 @@ bool CFolder::isFolder()
 	}
 
 	return false;
-	/*return state[3] == '1';*/
 }
 
 void CFolder::getChild(std::vector<CFolder * > child)
@@ -219,7 +204,6 @@ void CFolder::getChild(std::vector<CFolder * > child)
 
 CFolder::~CFolder()
 {
-	//deleteSubFolder(this);
 }
 
 // FAT 32
@@ -230,7 +214,6 @@ FAT_32::FAT_32(std::string volume)
 {
 	if (volume.size() > 1)
 	{
-		printf("[ERROR]: INVALID DISK NAME SIZE (\" %d \" instead of 1) \n", volume.size());
 		exit(1);
 	}
 
@@ -238,10 +221,10 @@ FAT_32::FAT_32(std::string volume)
 
 	FILE *f;
 	f = fopen(diskName.c_str(), "rb");
+
 	if (f == nullptr)
 	{
 		fclose(f);
-		printf("[ERROR]: CANNOT OPEN %s", diskName.c_str());
 		diskName = "";
 		exit(0);
 	}
@@ -250,9 +233,8 @@ FAT_32::FAT_32(std::string volume)
 	this->readBootSector();
 	this->readFatTable();
 	this->makeRDET();
-
+	
 	this->curPath = &root;
-
 	std::string rootPath = "";
 	rootPath += diskName[4];
 	rootPath += diskName[5];
@@ -346,14 +328,17 @@ void FAT_32::makeRDET()
 	this->root.state = "00010000";
 	this->root.size = "0";
 	this->root.cluster.push_back(littleEdian(bootSector.clusterStartOfRDET, 4));
+	this->root.index = 0;
 
-	readRDET(startSector * 512, this->root);
+	int idx = 0;
+	readRDET(startSector * 512, this->root, idx);
+
 }
 
-void FAT_32::readRDET(long offset, CFolder &folder)
+void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 {
-	std::vector<int> entries = numberOfFile(offset);
 
+	std::vector<int> entries = numberOfFile(offset);
 	std::vector<CFolder *> res;
 
 	bool hasLFN = false;
@@ -364,7 +349,6 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 	fseek(f, offset, SEEK_SET);
 
 	std::vector<std::string> lfn;
-
 
 	for (int i = 0; i < entries.size(); ++i)
 	{
@@ -377,6 +361,7 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 
 		Entry endtry;
 		fread(&endtry, sizeof(endtry), 1, f);
+
 		if (!hasLFN)
 		{
 
@@ -393,6 +378,7 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 			}
 			name = normalization(name);
 
+
 		}
 		else
 		{
@@ -407,6 +393,7 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 			name = normalization(name);
 
 			name.pop_back();
+
 		}
 
 
@@ -419,30 +406,33 @@ void FAT_32::readRDET(long offset, CFolder &folder)
 
 		std::vector<long> clusterLinkedList = clusterLinkListFrom(startCluster);
 		std::string size = std::to_string(littleEdian(endtry.size, 4));
-		CFolder *newFolder = new CFolder(name, state, size, clusterLinkedList);
+
+		CFolder* newFolder = new CFolder(name, state, size, clusterLinkedList, idx);
+
+		if (newFolder->canPrint())
+		{
+			delete newFolder;
+			newFolder = new CFolder(name, state, size, clusterLinkedList, ++idx);
+		}
 		res.push_back(newFolder);
 
 		lfn.clear();
 		hasLFN = false;
 		name = "";
-
 	}
 
-
-
 	fclose(f);
-
 	folder.getChild(res);
-
 
 	for (int i = 2; i < folder.subItem.size(); ++i)
 	{
 		if (folder.subItem[i]->isFolder())
 		{
+			
 			for (int j = 0; j < folder.subItem[i]->cluster.size(); ++j)
 			{
 				long subOffset = clusterToSector(folder.subItem[i]->cluster[j]) * 512;
-				readRDET(subOffset, *folder.subItem[i]);
+				readRDET(subOffset, *folder.subItem[i], idx);
 			}
 		}
 	}
@@ -462,7 +452,6 @@ std::vector<long> FAT_32::clusterLinkListFrom(long startCluster)
 	res.pop_back();
 	return res;
 }
-
 
 void FAT_32::printFatTable()
 {
@@ -547,7 +536,7 @@ std::string FAT_32::readVFAT(FILE *f)
 
 void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 {
-
+	//folder.print();
 	folder.print(false);
 
 	int lst = folder.subItem.size() - 1;
@@ -624,17 +613,11 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 			return res;
 		}
 
-<<<<<<< Updated upstream
-		//folder->print(false);
-
-
-=======
 		
->>>>>>> Stashed changes
 		long startOffset = clusterToSector(folder->cluster[0]) * 512;
 		long lastOffset = clusterToSector(folder->cluster[folder->cluster.size() - 1] + 1 + 1) * 512;
 
-		//std::string content = "";
+		
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
@@ -657,26 +640,8 @@ CFolder *FAT_32::findFolderByName(CFolder &folder, std::string folderName, bool 
 {
 
 	CFolder *res = folder.findByName(folderName, searchAll);
-	if (res == nullptr)
-	{
-		printf("[ERROR] CANNOT FIND \"%s\"\n", folderName.c_str());
-		return nullptr;
-
-
-	}
-
 	return res;
-
-	//printFolderInfo(*res);
-
-
 }
-
-
-
-
-
-
 
 void FAT_32::print_base_in4()
 {
@@ -684,17 +649,22 @@ void FAT_32::print_base_in4()
 	printf("%C:\\ \n", this->diskName[4]);
 	printf("Boot sector: \n");
 	this->printBootSector();
-	/*printf("RDET: \n");
-	this->printRDET();*/
-
+}
+bool isNumber(const std::string& str)
+{
+	for (char c : str)
+	{
+		c = c - '0';
+		if (c < 0 || c > 9)
+			return false;
+	}
+	return true;
 }
 
 bool FAT_32::cd(std::string path)
 {
 	std::vector <std::string > inPath = splitString(path);
 
-<<<<<<< Updated upstream
-=======
 	if (inPath.size() == 1)
 	{
 		std::string command = "";
@@ -752,7 +722,6 @@ bool FAT_32::cd(std::string path)
 
 		
 	}
->>>>>>> Stashed changes
 	if (inPath[0] == ".")
 		return true;
 	int back = 0;
@@ -806,16 +775,8 @@ bool FAT_32::cd(std::string path)
 			currentPath.push_back(inPath[i]);
 
 		}
-		/*if (tempPath == nullptr || !tempPath->isFolder())
-		{
-			return false;
-		}*/
-
-
 		curPath = tempPath;
 		this->path = currentPath;
-
-
 	}
 	else
 	{
@@ -829,16 +790,8 @@ bool FAT_32::cd(std::string path)
 			currentPath.push_back(inPath[i]);
 
 		}
-		/*if (tempPath == nullptr || !tempPath->isFolder())
-		{
-			return false;
-		}*/
-
 		curPath = tempPath;
 		this->path = currentPath;
-
-
-
 	}
 
 	printf("\n");
@@ -864,8 +817,8 @@ void FAT_32::ls()
 {
 	int index[] = { 3,2,7,6,5 };
 	char type[] = { 'd', 'a', 'r','h','s' };
-	printf("Mode          Name\n");
-	printf("----          ----\n");
+	printf("Mode     ID     Name\n");
+	printf("----     --     ----\n");
 
 	for (auto subFolder : this->curPath->subItem)
 	{
@@ -876,13 +829,9 @@ void FAT_32::ls()
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
 			printf("%s", mode);
-<<<<<<< Updated upstream
-			printf("        ");
-=======
 			printf("   ");
 			printf("%02u", subFolder->index);
 			printf("      ");
->>>>>>> Stashed changes
 			printf("%s\n", subFolder->name.c_str());
 		}
 
@@ -918,7 +867,8 @@ void FAT_32::read(const std::string& name)
 		{
 			cd(subFolder->name);
 			res = printFolderInfo(subFolder);
-			cd("..");
+			if (subFolder->isFolder())
+				cd("..");
 		}
 	}
 

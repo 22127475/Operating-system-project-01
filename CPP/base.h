@@ -6,8 +6,9 @@
 #include <string>
 #include <map>
 #include <windows.h>
-// #include <iostream>
 
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 // using BYTE = unsigned char;
@@ -27,28 +28,26 @@ public:
     // virtual vector<BYTE> get_data(const string &name) = 0;
 
     virtual void read(const string &name) = 0;
+
+    // virtual void info(const string &path = "") = 0;
 };
 
 
-vector<string> splitString(const string &input, string delimeter = "/\\", bool all = true);
-bool compareWstrVsStr(const wstring &wstr, const string &str);
 
-
-string trim(const string &str) {
+string trim(const string &str, bool end_slash = true) {
     size_t start = str.find_first_not_of(" \t\n\r");
-    size_t end = str.find_last_not_of(" \t\n\r\\/");
+    size_t end = end_slash ? str.find_last_not_of(" \t\n\r\\/") : str.find_last_not_of(" \t\n\r");
+
 
     if (start == string::npos || end == string::npos)
         return ""; // No non-whitespace characters found
 
     return str.substr(start, end - start + 1);
 }
-// split A/B, A\B => [A] [B]
-// split cd A => [cd] [A] [\n]
-vector<string> splitString(const string &input, string delimeter, bool all) {
+vector<string> splitString(const string &input, string delimeter = "/\\", bool all = true, bool end_slash = true) {
     vector<string> tokens;
 
-    string tmp = trim(input);
+    string tmp = trim(input, end_slash);
     if (tmp[0] == '\"' && tmp[tmp.size() - 1] == '\"')
         tmp = tmp.substr(1, tmp.size() - 2);
 
@@ -58,12 +57,16 @@ vector<string> splitString(const string &input, string delimeter, bool all) {
     if (all)
         while (foundPos != string::npos) {
             tokens.push_back(tmp.substr(startPos, foundPos - startPos));
-            startPos = foundPos + 1;
+
+            startPos = tmp.find_first_not_of(delimeter, foundPos + 1);
             foundPos = tmp.find_first_of(delimeter, startPos);
         }
     else {
+        if (foundPos == string::npos)
+            return { tmp };
         tokens.push_back(tmp.substr(startPos, foundPos - startPos));
-        startPos = foundPos + 1;
+        startPos = tmp.find_first_not_of(delimeter, foundPos + 1);
+        foundPos = tmp.find_first_of(delimeter, startPos);
     }
 
     tokens.push_back(tmp.substr(startPos));
@@ -73,4 +76,9 @@ vector<string> splitString(const string &input, string delimeter, bool all) {
 bool compareWstrVsStr(const wstring &wstr, const string &str) {
     wstring str2(str.begin(), str.end());
     return wstr == str2;
+}
+
+string Utf16toUtf8(const wstring &wstr) {
+    wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+    return convert.to_bytes(wstr);
 }
