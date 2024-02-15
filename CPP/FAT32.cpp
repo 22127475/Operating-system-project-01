@@ -100,8 +100,13 @@ bool CFolder::canPrint()
 
 	}
 
+<<<<<<< Updated upstream
 	if (state[5] == '1')
 		return false;
+=======
+	/*if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
+		return false;*/
+>>>>>>> Stashed changes
 
 	return res;
 }
@@ -119,6 +124,7 @@ void CFolder::print(bool isFull)
 
 		if (isFull)
 		{
+<<<<<<< Updated upstream
 
 			/*for (int i = 0; i < idx; ++i)
 				printf(" ");*/
@@ -129,6 +135,10 @@ void CFolder::print(bool isFull)
 			/*for (int i = 0; i < idx; ++i)
 				printf(" ");*/
 
+=======
+			
+			printf("State: %s\n", binToState().c_str());
+>>>>>>> Stashed changes
 			printf("Size: %s\n", this->size.c_str());
 			//for (int i = 0; i < idx; ++i)
 			//	printf(" ");
@@ -175,7 +185,18 @@ CFolder *CFolder::findByName(std::string fileName, bool searchAll)
 
 	return nullptr;
 }
+std::string CFolder::binToState()
+{
+	std::string stateList[] = { "","","Archive","Directory","VolLabel","System","Hidden","ReadOnly" };
+	std::string res = "";
+	for (int i = 0; i < 8; ++i)
+		if (state[i] == '1')
+			res += stateList[i] + ", ";
+	res.pop_back();
+	res.pop_back();
 
+	return res;
+}
 bool CFolder::isFolder()
 {
 	std::string folder[] = { "00010000", "00010010" };
@@ -565,9 +586,22 @@ void FAT_32::printRDET()
 
 std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 {
+	printf("--------------Info-------------\n");
+	folder->print();
+	long startSector = clusterToSector(folder->cluster[0]);
+	printf("Sector: ");
+	for (int i = 0; i < folder->cluster.size(); ++i)
+	{
+		printf("%d, %d, ", startSector + i, startSector + i + 1);
+		++startSector;
+	}
+	printf("\n-------------------------------\n");
+
 	std::vector<BYTE> res;
 	if (folder->isFolder())
 	{
+		
+
 		tree();
 	}
 	else
@@ -582,15 +616,21 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		for (int i = idx + 1; i <= idx + 3; ++i)
 			ext += folder->name[i];
 
+		
+
 		if (ext != "txt" && ext != "TXT")
 		{
 			printf("Open: \n\t %s \nwith another app \n", folder->name.c_str());
 			return res;
 		}
 
+<<<<<<< Updated upstream
 		//folder->print(false);
 
 
+=======
+		
+>>>>>>> Stashed changes
 		long startOffset = clusterToSector(folder->cluster[0]) * 512;
 		long lastOffset = clusterToSector(folder->cluster[folder->cluster.size() - 1] + 1 + 1) * 512;
 
@@ -653,6 +693,66 @@ bool FAT_32::cd(std::string path)
 {
 	std::vector <std::string > inPath = splitString(path);
 
+<<<<<<< Updated upstream
+=======
+	if (inPath.size() == 1)
+	{
+		std::string command = "";
+		int index = 0;
+		for (index; index < inPath[0].size(); ++index)
+		{
+			if (inPath[0][index] == ' ')
+				break;
+			command += inPath[0][index];
+		}
+		
+
+		if (command == "--index" || command == "-i")
+		{
+			command = "";
+			index++;
+			for (index; index < inPath[0].size(); ++index)
+				command += inPath[0][index];
+
+			if (isNumber(command))
+			{
+				index = stoi(command);
+
+				CFolder* tempPath = curPath;
+				std::vector<std::string> currentPath = this->path;
+
+				if (tempPath->index != index)
+				{
+					CFolder* found = nullptr;
+					for (auto subFolder : tempPath->subItem)
+					{
+						found = subFolder->findByID(index);
+						if (found)
+						{
+							if (!found->isFolder())
+								return false;
+							tempPath = subFolder;
+							currentPath.push_back(subFolder->name);
+							break;
+						}
+					}
+					if (!found)
+						return false;
+
+				}
+				curPath = tempPath;
+				this->path = currentPath;
+				printf("\n");
+				return true;
+			}
+
+			return false;
+			
+		}
+
+		
+	}
+>>>>>>> Stashed changes
 	if (inPath[0] == ".")
 		return true;
 	int back = 0;
@@ -776,7 +876,13 @@ void FAT_32::ls()
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
 			printf("%s", mode);
+<<<<<<< Updated upstream
 			printf("        ");
+=======
+			printf("   ");
+			printf("%02u", subFolder->index);
+			printf("      ");
+>>>>>>> Stashed changes
 			printf("%s\n", subFolder->name.c_str());
 		}
 
@@ -790,7 +896,12 @@ void FAT_32::tree()
 
 void FAT_32::read(const std::string& name)
 {
+	printf("Size: %d", name.size());
 	std::string tempName = name;
+	if (tempName.size() == 0)
+	{
+		tempName = curPath->name;
+	}
 	if (tempName.front() == '\"' && tempName.back() == '\"')
 	{
 		tempName.erase(0, 1);
@@ -810,7 +921,6 @@ void FAT_32::read(const std::string& name)
 			cd("..");
 		}
 	}
-
 
 	for (char content : res)
 		printf("%c", content);

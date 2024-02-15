@@ -55,6 +55,7 @@ public:
 	void getChild(std::vector<CFolder*>);
 	bool canPrint();
 	CFolder* findByName(std::string fileName, bool searchAll = true);
+	std::string binToState();
 	~CFolder();
 
 };

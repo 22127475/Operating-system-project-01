@@ -26,6 +26,11 @@ int checkVolume(string name) {
     format.resize(8);
 
     buffer.resize(3);
+<<<<<<< Updated upstream
+=======
+    //f
+    // (buffer.data(), 1, 3, volume);
+>>>>>>> Stashed changes
     fread(&buffer[0], 1, 3, volume);
     fread(&format[0], 1, 8, volume);
     if (format == "NTFS    ") {
@@ -45,9 +50,12 @@ int checkVolume(string name) {
     return 0;
 }
 
-void try_read(Volume *volume, string name) {
+void try_read(Volume *volume, std::vector<std::string> name) {
     try {
-        volume->read(name);
+        if (name.size() == 1)
+            volume->read("");
+        else
+            volume->read(name[1]);
     }
     catch (const char *msg) {
         fprintf(stderr, "Error: %s\n", msg);
@@ -100,11 +108,15 @@ void run(Volume *volume) {
         else if (command[0] == "tree")
             volume->tree();
         else if (command[0] == "read")
-            try_read(volume, command[1]);
+            try_read(volume, command);
 
         else if (command[0] == "cls")
             system("cls");
+<<<<<<< Updated upstream
         else if (command[0] == "help" || command[0] == "?")
+=======
+        else if (command[0] == "-h" || command[0] == "--help" || command[0] == "help" || command[0] == "?")
+>>>>>>> Stashed changes
             print_help();
         else if (command[0] == "exit" || command[0] == "quit") {
             printf("Goodbye\n");
