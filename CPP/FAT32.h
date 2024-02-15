@@ -1,12 +1,6 @@
 #pragma once
 #include "base.h"
 
-//unsigned long littleEdian(const BYTE* arr, unsigned int n);
-//unsigned long littleEdian(const std::vector<BYTE>& arr);
-//std::string hexToBin(const BYTE& hex);
-//std::string normalization(const std::string& src);
-//std::string toUpercase(const std::string& src);
-
 struct BootSector
 {
 	BYTE jumpCode[3];
@@ -51,15 +45,14 @@ public:
 public:
 	CFolder();
 	CFolder(const std::string& name, const std::string& state, const std::string& size, const std::vector<long>& cluster,const int& index);
-	void print(bool isFull = true);
 	bool isFolder();
 	void getChild(std::vector<CFolder*>);
+	std::string binToState();
 	bool canPrint();
+	void print(bool isFull = true);
 	CFolder* findByID(const int &id);
 	CFolder* findByName(std::string fileName, bool searchAll = true);
-	std::string binToState();
 	~CFolder();
-
 };
 
 class FAT_32 : public Volume
@@ -78,34 +71,36 @@ public:
 	FAT_32(std::string volume);
 	void readBootSector();
 	void printBootSector();
-
-	long clusterToSector(int cluster);
-	std::vector<long> clusterLinkListFrom(long startCluster);
 	void readFatTable();
 	void printFatTable();
-
 	std::vector<int> numberOfFile(long offset);
 	std::string readVFAT(FILE* f);
-	//std::vector<CFolder*> readRDET(long offset);
+	std::vector<long> clusterLinkListFrom(long startCluster);
+	long clusterToSector(int cluster);
 	void readRDET(long offset, CFolder& folder, int& idx);
 	void makeRDET();
 	void printRDET(CFolder& folder, std::string time = "", bool last = false);
 	void printRDET();
-	std::vector<BYTE> printFolderInfo(CFolder* folder);
 	CFolder* findFolderByName(CFolder& folder, std::string folderName, bool searchAll = true);
+	std::vector<BYTE> printFolderInfo(CFolder* folder);
 
 
 	// Volume
-	std::string csd();
 	void print_base_in4();
 	bool cd(string path);
+	std::string csd();
 	wstring cwd();
-	void ls();
 	void tree();
+	void ls();
 	void read(const string& name);
 };
 
-
+// support functions
+unsigned long littleEdian(const BYTE* arr, unsigned int n);
+unsigned long littleEdian(const std::vector<BYTE>& arr);
+std::string normalization(const std::string& src);
+std::string toUpercase(const std::string& src);
+std::string hexToBin(const BYTE& hex);
 
 
 

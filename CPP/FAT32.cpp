@@ -1,5 +1,6 @@
 ﻿#include "FAT32.h"
 
+// Support functions
 unsigned long littleEdian(const BYTE *arr, unsigned int n)
 {
 	unsigned long res = 0;
@@ -7,7 +8,6 @@ unsigned long littleEdian(const BYTE *arr, unsigned int n)
 		res = (res << 8) | arr[i];
 	return res;
 }
-
 unsigned long littleEdian(const std::vector<BYTE> &arr)
 {
 	unsigned long res = 0;
@@ -16,7 +16,6 @@ unsigned long littleEdian(const std::vector<BYTE> &arr)
 
 	return res;
 }
-
 std::string normalization(const std::string &src)
 {
 	std::string str = src;
@@ -48,7 +47,6 @@ std::string normalization(const std::string &src)
 	}
 	return str;
 }
-
 std::string toUpercase(const std::string &src)
 {
 	std::string res = src;
@@ -61,7 +59,6 @@ std::string toUpercase(const std::string &src)
 	}
 	return res;
 }
-
 std::string hexToBin(const BYTE &hex)
 {
 	std::string res;
@@ -92,7 +89,6 @@ CFolder::CFolder(const std::string &name, const std::string &state, const std::s
 	this->index = index;
 
 }
-
 bool CFolder::canPrint()
 {
 	
@@ -104,12 +100,11 @@ bool CFolder::canPrint()
 
 	}
 
-	/*if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
-		return false;*/
+	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
+		return false;
 
 	return res;
 }
-
 void CFolder::print(bool isFull)
 {
 
@@ -144,7 +139,6 @@ CFolder* CFolder::findByID(const int& id)
 	
 	return nullptr;
 }
-
 CFolder *CFolder::findByName(std::string fileName, bool searchAll)
 {
 	if (this->name == fileName)
@@ -194,22 +188,23 @@ bool CFolder::isFolder()
 
 	return false;
 }
-
 void CFolder::getChild(std::vector<CFolder * > child)
 {
 	this->subItem = child;
 }
-
-
-
 CFolder::~CFolder()
 {
+	std::vector<CFolder*>::const_iterator it;
+	for (it = subItem.begin(); it != subItem.end(); ++it)
+	{
+		delete* it;
+		it = subItem.erase(it);
+
+	}
 }
 
 // FAT 32
-
 FAT_32::FAT_32() {}
-
 FAT_32::FAT_32(std::string volume)
 {
 	if (volume.size() > 1)
@@ -245,7 +240,6 @@ FAT_32::FAT_32(std::string volume)
 	this->path.push_back(rootPath);
 
 }
-
 void FAT_32::readBootSector()
 {
 	FILE *f;
@@ -262,7 +256,6 @@ void FAT_32::readBootSector()
 	fseek(f, 0, SEEK_SET);
 	fclose(f);
 }
-
 void FAT_32::printBootSector()
 {
 	printf("Jump code: 0x%02X%02X%02 \n", bootSector.jumpCode[2], bootSector.jumpCode[1], bootSector.jumpCode[0]);
@@ -284,7 +277,6 @@ void FAT_32::printBootSector()
 		printf("%C", bootSector.FATType[i]);
 	printf("\n");
 }
-
 long FAT_32::clusterToSector(int cluster)
 {
 	if (cluster < 2)
@@ -298,7 +290,6 @@ long FAT_32::clusterToSector(int cluster)
 
 	return (Sb + Sf * Nf + 0 + (cluster - 2) * Sc);
 }
-
 void FAT_32::readFatTable()
 {
 	FILE *f;
@@ -318,7 +309,6 @@ void FAT_32::readFatTable()
 	fatMap = fatTable;
 	fclose(f);
 }
-
 void FAT_32::makeRDET()
 {
 	long startSector = littleEdian(bootSector.sectorOfBootsector, 2) + littleEdian(bootSector.FATSize, 4) * (unsigned int)bootSector.copyOfFAT;
@@ -334,7 +324,6 @@ void FAT_32::makeRDET()
 	readRDET(startSector * 512, this->root, idx);
 
 }
-
 void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 {
 
@@ -437,7 +426,6 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 		}
 	}
 }
-
 std::vector<long> FAT_32::clusterLinkListFrom(long startCluster)
 {
 	std::vector<long> res;
@@ -452,7 +440,6 @@ std::vector<long> FAT_32::clusterLinkListFrom(long startCluster)
 	res.pop_back();
 	return res;
 }
-
 void FAT_32::printFatTable()
 {
 	long clusterNo = 0;
@@ -465,7 +452,6 @@ void FAT_32::printFatTable()
 			printf("%d : %d\n", i, clusterNo);
 	}
 }
-
 std::vector<int> FAT_32::numberOfFile(long offset)
 {
 	FILE *f;
@@ -499,7 +485,6 @@ std::vector<int> FAT_32::numberOfFile(long offset)
 	return res;
 
 }
-
 std::string FAT_32::readVFAT(FILE *f)
 {
 	std::string res = "";
@@ -533,7 +518,6 @@ std::string FAT_32::readVFAT(FILE *f)
 
 	return res;
 }
-
 void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 {
 	//folder.print();
@@ -566,13 +550,11 @@ void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 	}
 
 }
-
 void FAT_32::printRDET()
 {
 	printRDET(root);
 
 }
-
 std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 {
 	printf("--------------Info-------------\n");
@@ -635,14 +617,12 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 
 	return res;
 }
-
 CFolder *FAT_32::findFolderByName(CFolder &folder, std::string folderName, bool searchAll)
 {
 
 	CFolder *res = folder.findByName(folderName, searchAll);
 	return res;
 }
-
 void FAT_32::print_base_in4()
 {
 	Volume::print_base_in4();
@@ -661,6 +641,7 @@ bool isNumber(const std::string& str)
 	return true;
 }
 
+// Volume
 bool FAT_32::cd(std::string path)
 {
 	std::vector <std::string > inPath = splitString(path);
@@ -803,7 +784,6 @@ std::wstring FAT_32::cwd()
 	std::string str = csd();
 	return std::wstring(str.begin(), str.end());
 }
-
 std::string FAT_32::csd()
 {
 	std::string currentPath = "";
@@ -812,13 +792,12 @@ std::string FAT_32::csd()
 	currentPath.pop_back();
 	return currentPath;
 }
-
 void FAT_32::ls()
 {
 	int index[] = { 3,2,7,6,5 };
 	char type[] = { 'd', 'a', 'r','h','s' };
-	printf("Mode     ID     Name\n");
-	printf("----     --     ----\n");
+	printf("Mode          ID          Name\n");
+	printf("----          --          ----\n");
 
 	for (auto subFolder : this->curPath->subItem)
 	{
@@ -829,23 +808,19 @@ void FAT_32::ls()
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
 			printf("%s", mode);
-			printf("   ");
+			printf("        ");
 			printf("%02u", subFolder->index);
-			printf("      ");
+			printf("          ");
 			printf("%s\n", subFolder->name.c_str());
 		}
-
-
 	}
 }
 void FAT_32::tree()
 {
 	printRDET(*curPath);
 }
-
 void FAT_32::read(const std::string& name)
 {
-	printf("Size: %d", name.size());
 	std::string tempName = name;
 	if (tempName.size() == 0)
 	{
