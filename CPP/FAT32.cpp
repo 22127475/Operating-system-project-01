@@ -258,7 +258,6 @@ void FAT_32::readBootSector()
 }
 void FAT_32::printBootSector()
 {
-	printf("Jump code: 0x%02X%02X%02 \n", bootSector.jumpCode[2], bootSector.jumpCode[1], bootSector.jumpCode[0]);
 	printf("OEM ID: %s \n", bootSector.oemID);
 	printf("Byte per sector: %d \n", littleEdian(bootSector.bytePerSector, 2));
 	printf("Sector per cluster (Sc): %d \n", int(bootSector.sectorPerCluster));
@@ -266,11 +265,13 @@ void FAT_32::printBootSector()
 	printf("Number of FAT table (Nf): %d \n", int(bootSector.copyOfFAT));
 	printf("Volume size (Sv): %d \n", littleEdian(bootSector.volumeSize, 4));
 	printf("FAT size (Sf): %d \n", littleEdian(bootSector.FATSize, 4));
+	/*
 	printf("First sector of FAT table: %d \n", littleEdian(bootSector.sectorOfBootsector, 2));
 	printf("First sector of RDET: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + littleEdian(bootSector.FATSize, 4) * (unsigned int)bootSector.copyOfFAT);
 	printf("First cluster of RDET: %d \n", littleEdian(bootSector.clusterStartOfRDET, 4));
 	printf("First sector of Data: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + littleEdian(bootSector.FATSize, 4) * (unsigned int)bootSector.copyOfFAT);
 	printf("Data size: %d \n", littleEdian(bootSector.volumeSize, 4) - littleEdian(bootSector.sectorOfBootsector, 2) - littleEdian(bootSector.FATSize, 4) * (unsigned int)bootSector.copyOfFAT);
+	*/
 	printf("FAT type: ");
 	int i = 0;
 	for (i; i < 8; ++i)
@@ -534,15 +535,11 @@ void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 			printf("|");
 		if (i != lst)
 		{
-			//printf("   ");
-			// printf("%s", (time + char(195) + char(196)).c_str());
-			// printRDET(*folder.subItem[i], (time + char(179) + " "), false);
 			printf("%s", (time + time + time + "+---").c_str());
 			printRDET(*folder.subItem[i], (time + " "), false);
 		}
 		else
 		{
-			// printf("%s", (time + char(192) + char(196)).c_str());
 
 			printf("%s", (time + time + time + "\\---").c_str());
 			printRDET(*folder.subItem[i], time + "  ", true);
@@ -571,13 +568,10 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	std::vector<BYTE> res;
 	if (folder->isFolder())
 	{
-		
-
 		tree();
 	}
 	else
 	{
-
 		std::string ext = "";
 		int idx = folder->name.size();
 		for (idx; folder->name[idx] != '.'; --idx)
@@ -598,8 +592,6 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		
 		long startOffset = clusterToSector(folder->cluster[0]) * 512;
 		long lastOffset = clusterToSector(folder->cluster[folder->cluster.size() - 1] + 1 + 1) * 512;
-
-		
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
@@ -627,7 +619,6 @@ void FAT_32::print_base_in4()
 {
 	Volume::print_base_in4();
 	printf("%C:\\ \n", this->diskName[4]);
-	printf("Boot sector: \n");
 	this->printBootSector();
 }
 bool isNumber(const std::string& str)
