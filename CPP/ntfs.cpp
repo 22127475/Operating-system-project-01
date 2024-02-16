@@ -216,6 +216,17 @@ NTFS::NTFS(string name) {
 
         try {
             MFT_Entry mft_entry_info(mft_entry);
+            //! Here
+            uint64_t num_sector = (i / 2 * mft_record_size + mft_offset) / bytes_per_sector + reserved_sectors;
+            mft_entry_info.sector_list.push_back(num_sector);
+            // //? Sector of the data run
+            // for (size_t j = 0; j < mft_entry_info.num_cluster.size(); j++) {
+            //     uint64_t start = mft_entry_info.start_cluster[j] * sectors_per_cluster;
+            //     uint64_t number_of_sector = mft_entry_info.num_cluster[j] * sectors_per_cluster;
+            //     for (size_t k = 0; k < number_of_sector; k++)
+            //         mft_entry_info.sector_list.push_back(start + k);
+            // }
+
             mft_entries[mft_entry_info.mft_record_number] = mft_entry_info;
         }
         catch (const char *msg) {
@@ -281,15 +292,16 @@ void NTFS::print_vbr() {
 }
 void NTFS::print_base_in4() {
     Volume::print_base_in4();
-    printf("\nDisk: %s\\\n", disk_name.c_str());
-    printf("OEM ID: %s\n", oem_id.c_str());
-    printf("Bytes per sector: %u\n", bytes_per_sector);
-    printf("Sectors per cluster: %u\n", sectors_per_cluster);
-    printf("Reserved sectors: %u\n", reserved_sectors);
-    printf("Total sectors: %u\n", total_sectors);
-    printf("First cluster of MFT: %u\n", mft_cluster_number);
-    printf("First cluster of MFTMirr: %u\n", mft_mirror_cluster_number);
-    printf("MFT record size: %d\n", mft_record_size);
+    printf("\n");
+    printf("Disk:                       %s\\\n", disk_name.c_str());
+    printf("OEM ID:                     %s\n", oem_id.c_str());
+    printf("Bytes per sector:           %u\n", bytes_per_sector);
+    printf("Sectors per cluster:        %u\n", sectors_per_cluster);
+    printf("Reserved sectors:           %u\n", reserved_sectors);
+    printf("Total sectors:              %u\n", total_sectors);
+    printf("First cluster of MFT:       %u\n", mft_cluster_number);
+    printf("First cluster of MFTMirr:   %u\n", mft_mirror_cluster_number);
+    printf("MFT record size:            %d\n", mft_record_size);
 }
 
 uint64_t NTFS::find_mft_entry(const string &record_name) {
@@ -301,31 +313,8 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
         }
     return des;
 }
-// vector<BYTE> NTFS::get_data(const string &name) {
-//     uint64_t des = find_mft_entry(name);
-//     if (des == 0)
-//         throw "Error: File not found";
 
-//     MFT_Entry mft = mft_entries[des];
-//     if (mft.is_directory())
-//         throw "Error: " + name + " is a directory";
-
-//     if (mft.resident)
-//         return mft.content;
-
-//     if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
-//         mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
-//     vector<BYTE> data(mft.real_size);
-//     uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
-
-//     fseeko64(volume, offset, 0);
-//     size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
-//     if (bytesRead != mft.real_size) {
-//         fprintf(stderr, "Error: unable to read data\n");
-//         exit(1);
-//     }
-//     return data;
-// }
+//! And here
 void NTFS::read(const string &name) {
     string tmp_path = name;
     if (tmp_path[0] == '\"' && tmp_path[tmp_path.size() - 1] == '\"')
@@ -333,13 +322,17 @@ void NTFS::read(const string &name) {
 
     uint64_t des = find_mft_entry(tmp_path);
     if (des == 0)
-        throw "Error: File not found";
+        throw "File not found";
 
     MFT_Entry mft = mft_entries[des];
+
+    mft.info();
     if (mft.is_directory()) {
-        change_dir(name);
+        // change_dir(name);
+        current_node.push_back(des);
         tree();
-        change_dir("..");
+        // change_dir("..");
+        current_node.pop_back();
         return;
     }
     if (mft.resident) {
@@ -349,18 +342,11 @@ void NTFS::read(const string &name) {
         return;
     }
 
-    // if (mft.real_size < mft.num_cluster * bytes_per_sector * sectors_per_cluster)
-    //     mft.real_size = mft.num_cluster * bytes_per_sector * sectors_per_cluster;
-    // vector<BYTE> data(mft.real_size);
-    // uint64_t offset = mft.start_cluster * bytes_per_sector * sectors_per_cluster;
-
-    // fseeko64(volume, offset, 0);
-    // size_t bytesRead = fread(data.data(), 1, mft.real_size, volume);
-
-    // for (auto &x : data)
-    //     printf("%c", x);
-    // printf("\n");
-
+    wstring ext = mft.file_name.substr(mft.file_name.size() - 4);
+    if (ext != L".txt" && ext != L".TXT") {
+        printf("Please use the appropriate reader to read this file.\n");
+        return;
+    }
     for (int i = 0; i < mft.num_cluster.size(); i++) {
         uint64_t size = mft.num_cluster[i] * bytes_per_sector * sectors_per_cluster;
         uint64_t offset = mft.start_cluster[i] * bytes_per_sector * sectors_per_cluster;
@@ -383,7 +369,8 @@ bool NTFS::change_dir(string path) {
     vector<string> paths = splitString(path, " ", 0);
     if (paths[0] == "-i" || paths[0] == "--index") {
         if (paths.size() < 2) {
-            fprintf(stderr, "Error: No index specified\n");
+            // fprintf(stderr, "Error: No index specified\n");
+            throw "Error: No index specified\n";
             return false;
         }
         uint64_t index = stoull(paths[1]);
@@ -392,7 +379,7 @@ bool NTFS::change_dir(string path) {
                 current_node.push_back(x);
                 return true;
             }
-        // fprintf(stderr, "Error: No such directory found\n");
+        throw "Error: No such directory found\n";
         return false;
     }
 
@@ -417,7 +404,7 @@ bool NTFS::change_dir(string path) {
             if (des == 0 || !mft_entries[des].is_directory())
             {
                 current_node = temp;
-                // fprintf(stderr, "Error: No such directory found\n");
+                throw "Error: No such directory found\n";
                 return false;
             }
             current_node.push_back(des);
@@ -461,7 +448,7 @@ void NTFS::list(bool print_hidden) {
         if (!print_hidden && mft_entries[x].is_hidden_system())
             continue;
         string attr = attribute_bit(mft_entries[x].attribute);
-        printf("%s\t\t", attr.c_str());
+        printf("%s\t", attr.c_str());
         uint64_t id = mft_entries[x].mft_record_number;
         printf("%llu\t", id);
 
@@ -501,8 +488,22 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
 }
 
 //! Here
-void NTFS::info(const string &path) {
+void MFT_Entry::info(const string &path) {
+    wprintf(L"Name: %ls\n", file_name.c_str());
+    printf("Attribute: ");
+    for (string &s : attribute)
+        printf("%s    ", s.c_str());
+    printf("\n");
 
+    printf("Size: %u\n", real_size);
+
+    printf("Include sector: %u\n", sector_list[0]);
+    if (sector_list.size() > 1) {
+        printf("The sector of the data-runs: ");
+        for (size_t i = 1; i < sector_list.size(); i++)
+            printf("%u   ", sector_list[i]);
+        printf("\n");
+    }
 }
 
 // Support functions
