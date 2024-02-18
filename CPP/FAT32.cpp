@@ -1,5 +1,4 @@
 ﻿#include "FAT32.h"
-
 // Support functions
 unsigned long littleEdian(const BYTE *arr, unsigned int n)
 {
@@ -298,20 +297,30 @@ void FAT_32::readFatTable()
 	long fatFirstCLuster = littleEdian(bootSector.sectorOfBootsector, 2);
 	fseek(f, fatFirstCLuster * 512, SEEK_SET);
 
-	BYTE temp[4] = { 1,1,1,1 };
-
+	BYTE cur[4] = { 1,1,1,1 };
+	BYTE next[4] = { 1,1,1,1 };
 
 	std::vector<std::vector<BYTE>> fatTable;
-	while (temp[0] + temp[1] + temp[2] + temp[3] != 0)
+	int condition  = cur[0] + cur[1] + cur[2] + cur[3] + next[0] + next[1] + next[2] + next[3];
+ 	while (condition != 0)
 	{
-		fread(&temp, sizeof(temp), 1, f);
-		fatTable.push_back({ temp[0], temp[1], temp[2], temp[3] });
+		fread(&cur, sizeof(cur), 1, f);
+		fread(&next, sizeof(next), 1, f);
+
+		fatTable.push_back({ cur[0], cur[1], cur[2], cur[3] });
+		fatTable.push_back({ next[0], next[1], next[2], next[3] });
+		condition  = cur[0] + cur[1] + cur[2] + cur[3] + next[0] + next[1] + next[2] + next[3];
 	}
+	std::vector<BYTE> zero = {0,0,0,0};
+	while(fatTable.back() == zero)
+		fatTable.pop_back();
 	fatMap = fatTable;
+
 	fclose(f);
 }
 void FAT_32::makeRDET()
 {
+	
 	long startSector = littleEdian(bootSector.sectorOfBootsector, 2) + littleEdian(bootSector.FATSize, 4) * (unsigned int)bootSector.copyOfFAT;
 
 
@@ -351,8 +360,15 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 
 		Entry endtry;
 		fread(&endtry, sizeof(endtry), 1, f);
-
-		if (!hasLFN)
+		if (endtry.name[0] == 0xE5)
+		{
+			lfn.clear();
+			hasLFN = false;
+			name = "";
+		}
+		else
+		{
+			if (!hasLFN)
 		{
 
 			for (int i = 0; i < 8; ++i)
@@ -386,7 +402,7 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 
 		}
 
-
+		}
 
 		while (name.back() == '.')
 			name.pop_back();
@@ -410,6 +426,8 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 		hasLFN = false;
 		name = "";
 	}
+		
+		
 
 	fclose(f);
 	folder.getChild(res);
@@ -466,6 +484,11 @@ std::vector<int> FAT_32::numberOfFile(long offset)
 	while (temp.OB != 0)
 	{
 		fread(&temp, sizeof(temp), 1, f);
+		/*if (temp.name[0] == 0xE5)
+		{
+			printf("Deleted\n");
+			continue;
+		}*/
 		if (temp.OB == 15)
 		{
 			sub++;
