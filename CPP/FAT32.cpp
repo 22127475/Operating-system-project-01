@@ -552,7 +552,6 @@ std::string FAT_32::readVFAT(FILE *f)
 }
 void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 {
-	//folder.print();
 	folder.print(false);
 
 	int lst = folder.subItem.size() - 1;
@@ -565,13 +564,11 @@ void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 		printf("%s", (time + "+---").c_str());
 		if (i != lst)
 		{
-			// printf("%s", (time + time + time + "+---").c_str());
 			printRDET(*folder.subItem[i], (time + "|   "), false);
 		}
 		else
 		{
 
-			// printf("%s", (time + time + time + "---").c_str());
 			printRDET(*folder.subItem[i], time + "    ", true);
 		}
 	}
@@ -847,6 +844,7 @@ void FAT_32::tree()
 void FAT_32::read(const std::string& name)
 {
 	std::string tempName = name;
+	printf("Input: %s\n", name.c_str());
 	if (tempName.size() == 0)
 	{
 		tempName = curPath->name;
@@ -857,6 +855,46 @@ void FAT_32::read(const std::string& name)
 		tempName.pop_back();
 	}
 	std::vector<BYTE> res;
+	
+	unsigned int index = 0;
+	std::string command = "";
+
+	while(tempName[index] != ' ')
+	{
+		command += tempName[index];
+		index++;
+	}
+	if (command == "--index" || command == "-i")
+	{
+		printf("In index\n");
+		command = "";
+		for (int i = index + 1; i < tempName.size(); ++i)
+			command += tempName[i];
+		printf("Cmd: %s\n", command.c_str());
+		if (isNumber(command))
+		{
+			index = std::stoi(command);
+			printf("in isNum %d\n",index);
+
+			CFolder* temp = curPath;
+
+			if (temp->index != index)
+			{
+				for (auto subFolder : temp->subItem)
+				{
+					if(subFolder->index == index)
+					{
+						
+						tempName = subFolder->name;
+						printf("Found: %s\n", tempName.c_str());
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	printf("tempName: %s\n", tempName.c_str());
 	if (curPath->name == tempName)
 	{
 		res = printFolderInfo(curPath);
