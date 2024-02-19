@@ -63,9 +63,9 @@ private:
 	std::vector<std::string> path;
 	std::string diskName;
 	std::vector<std::vector<BYTE>> fatMap;
-
-public:
 	CFolder* curPath;
+	
+public:
 
 	FAT_32();
 	FAT_32(std::string volume);

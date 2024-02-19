@@ -724,25 +724,26 @@ bool FAT_32::cd(std::string path)
 
 		
 	}
-	if (inPath[0] == ".")
+	
+if (inPath[0] == ".")
 		return true;
-	int back = 0;
 	if (inPath[0] == "..")
 	{
-		if (this->path.size() == 1 || this->path.size() == 0)
+		if (this->path.size() == 0 ||  this->path.size() == 1)
 			return true;
-		for (auto command : inPath)
-		{
-			if (command == "..")
+		unsigned int back = 0;
+		for (auto dots : inPath)
+			if (dots == "..")
 				back++;
 
-		}
+
 		if (this->path.size() > back)
 		{
 			for (int i = 0; i < back; ++i)
 			{
 				this->path.pop_back();
 			}
+
 		}
 		else
 		{
@@ -752,51 +753,50 @@ bool FAT_32::cd(std::string path)
 			this->path.push_back(first);
 		}
 		inPath = this->path;
-		
 	}
 
+	CFolder* temp = curPath;
+	std::vector<std::string> temPath = this->path;
+	std::string disk = this->path[0];
+	
 
-	if (inPath[0].back() == ':')
-		inPath[0] += '\\';
-
-	CFolder *tempPath = this->curPath;
-	std::vector<std::string> currentPath = this->path;
-
-	if (inPath[0] == this->root.name)
+	if (inPath[0] != disk)
 	{
-		currentPath.clear();
-		CFolder *tempPath = &root;
-
-		for (int i = 0; i < inPath.size(); ++i)
+		for (auto pathName : inPath)
 		{
-			tempPath = tempPath->findByName(inPath[i], false);
-			if (tempPath == nullptr || !tempPath->isFolder())
+			temp = temp->findByName(pathName, false);
+			if (temp == nullptr || !temp->isFolder())
 			{
+				printf("[ERROR] cd : Path not found\n");
+
 				return false;
 			}
-			currentPath.push_back(inPath[i]);
+			temPath.push_back(pathName);
 
 		}
-		curPath = tempPath;
-		this->path = currentPath;
 	}
 	else
 	{
-		for (int i = 0; i < inPath.size(); ++i)
+		temp = &root;
+		temPath.clear();
+		temPath.push_back(this->path[0]);
+		for (int i = 1; i < inPath.size(); ++i)
 		{
-			tempPath = tempPath->findByName(inPath[i], false);
-			if (tempPath == nullptr || !tempPath->isFolder())
+			temp = temp->findByName(inPath[i], false);
+			if (temp == nullptr || !temp->isFolder())
 			{
+				printf("[ERROR] cd : Path not found\n");
 				return false;
 			}
-			currentPath.push_back(inPath[i]);
+			temPath.push_back(inPath[i]);
 
 		}
-		curPath = tempPath;
-		this->path = currentPath;
+
 	}
 
-	printf("\n");
+	this->path = temPath;
+	this->curPath = temp;
+
 
 	return true;
 }
@@ -810,8 +810,6 @@ std::string FAT_32::csd()
 	std::string currentPath = "";
 	for (std::string pathName : path)
 		currentPath += pathName + "\\";
-	// for (int i = 0; i < path.size(); ++i)
-	// 	currentPath += path[i] + (i == 0 ? "" : "\\");
 	if (path.size() != 1)
 		currentPath.pop_back();
 
@@ -819,12 +817,10 @@ std::string FAT_32::csd()
 }
 void FAT_32::ls()
 {
-	int index[] = { 3,2,7,6,5 };
-	char type[] = { 'd', 'a', 'r','h','s' };
-	// printf("Mode          ID          Name\n");
-	// printf("----          --          ----\n");
+	int index[] = { 3,2,7,6,5,4 };
+	char type[] = { 'd', 'a', 'r','h','s','s' };
+	
 	Volume::ls();
-
 	for (auto subFolder : this->curPath->subItem)
 	{
 		if (subFolder->canPrint())
