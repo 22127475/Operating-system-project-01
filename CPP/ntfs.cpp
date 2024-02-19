@@ -20,12 +20,10 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     mft_record_number = cal(data, 0x2C, 0x30);
 
     flag = cal(data, 0x16, 0x18);
-    // Skip the deleted record
-    // if (flag == 0 || flag == 2)
-    //     throw "Error: Deleted record";
-    if (flag & 0x1 == false)
+
+    if (flag & 0x0)
         throw "Error: Deleted record";
-    if (flag & 0x2)
+    if (flag == 0x2)
         attribute.push_back("DIRECTORY");
 
     standard_i4_start = cal(data, 0x14, 0x16);
@@ -46,11 +44,12 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     sub_files_number.resize(0); // Initialize the child list
 }
 
-vector<string> MFT_Entry::convert2attribute(uint32_t flags) {
+vector<string> MFT_Entry::convert2attribute(uint64_t flags) {
     vector<string> attributes;
     if (flags & 0x1) attributes.push_back("READ ONLY");
     if (flags & 0x2) attributes.push_back("HIDDEN");
     if (flags & 0x4) attributes.push_back("SYSTEM");
+    // if (flags & 0x10) attributes.push_back("DIRECTORY");
     if (flags & 0x20) attributes.push_back("ARCHIVE");
     if (flags & 0x40) attributes.push_back("DEVICE");
     if (flags & 0x80) attributes.push_back("NORMAL");
@@ -61,6 +60,7 @@ vector<string> MFT_Entry::convert2attribute(uint32_t flags) {
     if (flags & 0x1000) attributes.push_back("OFFLINE");
     if (flags & 0x2000) attributes.push_back("NOT_CONTENT_INDEXED");
     if (flags & 0x4000) attributes.push_back("ENCRYPTED");
+    if (flags & 0x10000000) attributes.push_back("DIRECTORY");
     return attributes;
 }
 void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
@@ -75,7 +75,7 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
     created_time = cal(data, beginIS, beginIS);
     last_modified_time = cal(data, beginIS + 0x8, beginIS + 0x10);
 
-    uint32_t flag = cal(data, beginIS + 0x20, beginIS + 0x24);
+    uint64_t flag = cal(data, beginIS + 0x20, beginIS + 0x24);
     attribute = convert2attribute(flag);
 }
 
@@ -92,6 +92,30 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     uint64_t beginFN = start + offset;
 
     parent_mft_record_number = cal(data, beginFN, beginFN + 0x6);
+    uint64_t fl = cal(data, 0x38, 0x3C);
+    vector<string> tmp_attr = convert2attribute(fl);
+    for (auto x : tmp_attr) {
+        bool has = false;
+        for (auto y : attribute)
+            if (x == y) {
+                has = true;
+                break;
+            }
+        if (!has)
+            attribute.push_back(x);
+    }
+
+    uint32_t name_space = data[beginFN + 0x41];
+    if (name_space == 0x0)
+        file_namespace = "POSIX";
+    else if (name_space == 0x1)
+        file_namespace = "Win32";
+    else if (name_space == 0x2)
+        file_namespace = "DOS";
+    else if (name_space == 0x3)
+        file_namespace = "Win32 & DOS";
+    else
+        file_namespace = "Unknown";
 
     uint8_t name_length = data[beginFN + 0x40];
 
@@ -284,7 +308,9 @@ void NTFS::child_linker() {
             root = it->second.mft_record_number;
             break;
         }
+    // root.attribute.push_back("DIRECTORY");
     current_node.push_back(root);
+    mft_entries[root].attribute.push_back("DIRECTORY");
 }
 
 void NTFS::print_vbr() {
@@ -327,13 +353,28 @@ void NTFS::read(const string &name) {
     uint64_t des = find_mft_entry(tmp_path);
     if (tmp_path == "")
         des = current_node.back();
+
+    vector<string> tmp_split = splitString(tmp_path, " ");
+    if (tmp_split[0] == "-i" || tmp_split[0] == "--index") {
+        if (tmp_split.size() < 2) {
+            // fprintf(stderr, "Error: No index specified\n");
+            throw "Error: No index specified\n";
+            return;
+        }
+        uint64_t index = stoull(tmp_split[1]);
+        for (auto &x : mft_entries[current_node.back()].sub_files_number)
+            if (mft_entries[x].mft_record_number == index) {
+                des = x;
+                break;
+            }
+    }
     if (des == 0)
         throw "File not found";
 
     MFT_Entry mft = mft_entries[des];
 
     mft.info();
-	printf("\n-------------------------------\n");
+    printf("\n-------------------------------\n");
 
     if (mft.is_directory()) {
         // change_dir(name);
@@ -497,9 +538,20 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
 //! Here
 void MFT_Entry::info(const string &path) {
     // Volume::read();
-	printf("--------------Info-------------\n");
+    printf("--------------Info-------------\n");
     wprintf(L"Name: %ls\n", file_name.c_str());
+    printf("Filename Namespace: %s\n", file_namespace.c_str());
     printf("Attribute: ");
+
+    for (int i = 0; i < attribute.size(); i++) //? Limit to only 1 directory keyword
+        if (attribute[i] == "DIRECTORY") {
+            for (int j = i + 1; j < attribute.size(); j++)
+                if (attribute[j] == "DIRECTORY") {
+                    attribute.erase(attribute.begin() + j);
+                    break;
+                }
+            break;
+        }
     for (string &s : attribute)
         printf("%s    ", s.c_str());
     printf("\n");
