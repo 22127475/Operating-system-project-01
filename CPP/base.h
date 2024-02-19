@@ -9,6 +9,8 @@
 
 #include <locale>
 #include <codecvt>
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 // using BYTE = unsigned char;
@@ -21,15 +23,16 @@ public:
     }
 
     virtual bool cd(string path) = 0;
-    virtual wstring cwd() = 0;
-    virtual void ls() = 0;
+    virtual wstring pwd() {
+        printf("Path\n----\n");
+        return L"";
+    }
+    virtual void ls() {
+        printf(" Mode \t ID \tFile name\n");
+        printf("------\t----\t---------\n");
+    }
     virtual void tree() = 0;
-
-    // virtual vector<BYTE> get_data(const string &name) = 0;
-
-    virtual void read(const string &name) = 0;
-
-    // virtual void info(const string &path = "") = 0;
+    virtual void read(const string &name = "") = 0;
 };
 
 
@@ -37,7 +40,6 @@ public:
 string trim(const string &str, bool end_slash = true) {
     size_t start = str.find_first_not_of(" \t\n\r");
     size_t end = end_slash ? str.find_last_not_of(" \t\n\r\\/") : str.find_last_not_of(" \t\n\r");
-
 
     if (start == string::npos || end == string::npos)
         return ""; // No non-whitespace characters found

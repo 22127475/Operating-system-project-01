@@ -24,6 +24,8 @@ public:
     uint64_t mft_record_number;
     uint8_t flag;
 
+    vector<uint64_t> sector_list; // List of sector of this MFT entry
+
     // Standard Information
     uint64_t created_time;
     uint64_t last_modified_time;
@@ -71,6 +73,8 @@ public:
     bool is_directory();
     bool is_archive();
     bool is_hidden_system();
+
+    void info(const string &path = "");
 };
 
 class NTFS : public Volume {
@@ -122,7 +126,8 @@ public: //? polymorphism
     bool cd(string path) {
         return change_dir(path);
     }
-    wstring cwd() {
+    wstring pwd() {
+        // Volume::pwd();
         return get_current_path();
     }
     void ls() {
@@ -131,8 +136,7 @@ public: //? polymorphism
     void tree() {
         print_tree();
     }
-    void read(const string &name);
-    void info(const string &path = "");
+    void read(const string &name = "");
 };
 
 // Support functions
