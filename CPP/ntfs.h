@@ -126,7 +126,8 @@ public: //? polymorphism
     bool cd(string path) {
         return change_dir(path);
     }
-    wstring cwd() {
+    wstring pwd() {
+        // Volume::pwd();
         return get_current_path();
     }
     void ls() {
@@ -135,7 +136,7 @@ public: //? polymorphism
     void tree() {
         print_tree();
     }
-    void read(const string &name);
+    void read(const string &name = "");
 };
 
 // Support functions

@@ -84,15 +84,16 @@ void try_cd(Volume *volume, vector<string> command) {
 }
 void print_help() {
     printf("Supported commands:\n");
-    printf("  cd <path> - change directory\n");
-    printf("  cd -i <ID> or cd --index <ID> - change directory by index\n");
-    printf("  cwd - print current working directory\n");
-    printf("  ls - list directory contents\n");
-    printf("  dir - list directory contents\n");
-    printf("  tree - print directory tree\n");
-    printf("  read <file> - print file contents\n");
-    printf("  quit - exit the program\n");
-    printf("  -h or --help or ? - print the support commands\n");
+    printf("  'info' - print volume information\n");
+    printf("  'cd [path]' - change directory\n");
+    printf("  'cd -i [ID]' or 'cd --index [ID]' - change directory by index\n");
+    printf("  'pwd' - print current working directory\n");
+    printf("  'ls' or 'dir' - list directory contents\n");
+    printf("  'read [file]' - print file contents\n");
+    printf("  'tree' - print directory tree\n");
+    printf("  'cls' or 'clear' - clear the screen\n");
+    printf("  'quit' or 'exit' - exit the program\n");
+    printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
 }
 
 void run(Volume *volume) {
@@ -100,7 +101,7 @@ void run(Volume *volume) {
     printf("\nEnter '?' or 'help' to view the supported commands\n");
     while (true) {
         // printf("\n%s", Utf16toUtf8(volume->cwd()).c_str());
-        wprintf(L"%ls", (volume->cwd()).c_str());
+        wprintf(L"%ls", (volume->pwd()).c_str());
         printf(" >> ");
 
         char buffer[256];
@@ -111,8 +112,10 @@ void run(Volume *volume) {
         if (command[0] == "cd" || command[0] == "cd.." || command[0] == "cd." || command[0] == "cd\\")
             try_cd(volume, command);
 
-        else if (command[0] == "cwd")
-            wprintf(L"%ls\n", (volume->cwd()).c_str());
+        else if (command[0] == "pwd") {
+            volume->Volume::pwd();
+            wprintf(L"%ls\n", (volume->pwd()).c_str());
+        }
         // printf("%s\n", Utf16toUtf8(volume->cwd()).c_str());
 
         else if (command[0] == "ls" || command[0] == "dir")
@@ -122,7 +125,7 @@ void run(Volume *volume) {
         else if (command[0] == "read")
             try_read(volume, command);
 
-        else if (command[0] == "cls")
+        else if (command[0] == "cls" || command[0] == "clear")
             system("cls");
         else if (command[0] == "-h" || command[0] == "--help" || command[0] == "help" || command[0] == "?")
             print_help();
@@ -130,6 +133,8 @@ void run(Volume *volume) {
             printf("Goodbye\n");
             return; //todo add prompt
         }
+        else if (command[0] == "info")
+            volume->print_base_in4();
         else
             fprintf(stderr, "Error: Unknown command\n");
         

@@ -21,13 +21,19 @@ public:
     }
 
     virtual bool cd(string path) = 0;
-    virtual wstring cwd() = 0;
-    virtual void ls() = 0;
+    virtual wstring pwd() {
+        printf("Path\n----\n");
+        return L"";
+    }
+    virtual void ls() {
+        printf(" Mode \t ID \tFile name\n");
+        printf("------\t----\t---------\n");
+    }
     virtual void tree() = 0;
 
     // virtual vector<BYTE> get_data(const string &name) = 0;
 
-    virtual void read(const string &name) = 0;
+    virtual void read(const string &name = "") = 0;
 
     // virtual void info(const string &path = "") = 0;
 };

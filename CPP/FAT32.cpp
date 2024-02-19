@@ -232,10 +232,11 @@ FAT_32::FAT_32(std::string volume)
 	std::string rootPath = "";
 	rootPath += diskName[4];
 	rootPath += diskName[5];
-	rootPath += "\\";
+	// rootPath += "\\";
 
 
 	root.name = rootPath;
+	// rootPath.pop_back();
 	this->path.push_back(rootPath);
 
 }
@@ -311,9 +312,9 @@ void FAT_32::readFatTable()
 		fatTable.push_back({ next[0], next[1], next[2], next[3] });
 		condition  = cur[0] + cur[1] + cur[2] + cur[3] + next[0] + next[1] + next[2] + next[3];
 	}
-	std::vector<BYTE> zero = {0,0,0,0};
-	while(fatTable.back() == zero)
-		fatTable.pop_back();
+	// std::vector<BYTE> zero = {0,0,0,0};
+	// while(fatTable.back() == zero)
+	// 	fatTable.pop_back();
 	fatMap = fatTable;
 
 	fclose(f);
@@ -554,18 +555,17 @@ void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 	{
 		if (!folder.subItem[i]->canPrint())
 			continue;
-		if (time != "")
-			printf("|");
+		printf("%s", (time + "+---").c_str());
 		if (i != lst)
 		{
-			printf("%s", (time + time + time + "+---").c_str());
-			printRDET(*folder.subItem[i], (time + " "), false);
+			// printf("%s", (time + time + time + "+---").c_str());
+			printRDET(*folder.subItem[i], (time + "|   "), false);
 		}
 		else
 		{
 
-			printf("%s", (time + time + time + "\\---").c_str());
-			printRDET(*folder.subItem[i], time + "  ", true);
+			// printf("%s", (time + time + time + "---").c_str());
+			printRDET(*folder.subItem[i], time + "    ", true);
 		}
 	}
 
@@ -578,6 +578,7 @@ void FAT_32::printRDET()
 std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 {
 	printf("--------------Info-------------\n");
+	// Volume::read();
 	folder->print();
 	long startSector = clusterToSector(folder->cluster[0]);
 	printf("Sector: ");
@@ -682,7 +683,6 @@ bool FAT_32::cd(std::string path)
 			if (isNumber(command))
 			{
 				index = stoi(command);
-
 				CFolder* tempPath = curPath;
 				std::vector<std::string> currentPath = this->path;
 
@@ -793,7 +793,7 @@ bool FAT_32::cd(std::string path)
 
 	return true;
 }
-std::wstring FAT_32::cwd()
+std::wstring FAT_32::pwd()
 {
 	std::string str = csd();
 	return std::wstring(str.begin(), str.end());
@@ -803,15 +803,20 @@ std::string FAT_32::csd()
 	std::string currentPath = "";
 	for (std::string pathName : path)
 		currentPath += pathName + "\\";
-	currentPath.pop_back();
+	// for (int i = 0; i < path.size(); ++i)
+	// 	currentPath += path[i] + (i == 0 ? "" : "\\");
+	if (path.size() != 1)
+		currentPath.pop_back();
+
 	return currentPath;
 }
 void FAT_32::ls()
 {
 	int index[] = { 3,2,7,6,5 };
 	char type[] = { 'd', 'a', 'r','h','s' };
-	printf("Mode          ID          Name\n");
-	printf("----          --          ----\n");
+	// printf("Mode          ID          Name\n");
+	// printf("----          --          ----\n");
+	Volume::ls();
 
 	for (auto subFolder : this->curPath->subItem)
 	{
@@ -821,10 +826,13 @@ void FAT_32::ls()
 			for (int i = 0; i < 5; ++i)
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
-			printf("%s", mode);
-			printf("        ");
-			printf("%02u", subFolder->index);
-			printf("          ");
+			// printf("%s", mode);
+			// printf("        ");
+			// printf("%02u", subFolder->index);
+			// printf("          ");
+			// printf("%s\n", subFolder->name.c_str());
+			printf("%s\t", mode);
+			printf("%04u\t", subFolder->index);
 			printf("%s\n", subFolder->name.c_str());
 		}
 	}

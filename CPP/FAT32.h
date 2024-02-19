@@ -89,10 +89,10 @@ public:
 	void print_base_in4();
 	bool cd(string path);
 	std::string csd();
-	wstring cwd();
+	wstring pwd();
 	void tree();
 	void ls();
-	void read(const string& name);
+	void read(const string& name = "");
 };
 
 // support functions

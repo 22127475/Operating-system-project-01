@@ -19,10 +19,14 @@ MFT_Header::MFT_Header(vector<BYTE> &data) {
 MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     mft_record_number = cal(data, 0x2C, 0x30);
 
-    flag = data[0x16];
+    flag = cal(data, 0x16, 0x18);
     // Skip the deleted record
-    if (flag == 0 || flag == 2)
+    // if (flag == 0 || flag == 2)
+    //     throw "Error: Deleted record";
+    if (flag & 0x1 == false)
         throw "Error: Deleted record";
+    if (flag & 0x2)
+        attribute.push_back("DIRECTORY");
 
     standard_i4_start = cal(data, 0x14, 0x16);
     standard_i4_size = cal(data, standard_i4_start + 0x4, standard_i4_start + 0x8);
@@ -321,12 +325,16 @@ void NTFS::read(const string &name) {
         tmp_path = tmp_path.substr(1, tmp_path.size() - 2);
 
     uint64_t des = find_mft_entry(tmp_path);
+    if (tmp_path == "")
+        des = current_node.back();
     if (des == 0)
         throw "File not found";
 
     MFT_Entry mft = mft_entries[des];
 
     mft.info();
+	printf("\n-------------------------------\n");
+
     if (mft.is_directory()) {
         // change_dir(name);
         current_node.push_back(des);
@@ -442,8 +450,7 @@ string attribute_bit(vector<string> &attribute) {
 void NTFS::list(bool print_hidden) {
     uint64_t node = current_node.back();
 
-    printf(" Mode \t ID \tFile name\n");
-    printf("------\t----\t---------\n");
+    Volume::ls();
     for (auto &x : mft_entries[node].sub_files_number) {
         if (!print_hidden && mft_entries[x].is_hidden_system())
             continue;
@@ -473,22 +480,24 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
     for (int i = 0; i < mft.sub_files_number.size(); i++) {
         if (mft_entries[mft.sub_files_number[i]].is_hidden_system())
             continue;
-        printf("%s", (prefix + "+--").c_str());
+        printf("%s", (prefix + "+---").c_str());
         if (i != lst) {
             // printf("%s", (prefix + char(195) + char(196)).c_str());
             // print_tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
-            print_tree(mft.sub_files_number[i], prefix + "|  ", false);
+            print_tree(mft.sub_files_number[i], prefix + "|   ", false);
         }
         else {
             // printf("%s", (prefix + char(192) + char(196)).c_str());
             // print_tree(mft.sub_files_number[i], prefix + "  ", true);
-            print_tree(mft.sub_files_number[i], prefix + "   ", true);
+            print_tree(mft.sub_files_number[i], prefix + "    ", true);
         }
     }
 }
 
 //! Here
 void MFT_Entry::info(const string &path) {
+    // Volume::read();
+	printf("--------------Info-------------\n");
     wprintf(L"Name: %ls\n", file_name.c_str());
     printf("Attribute: ");
     for (string &s : attribute)
