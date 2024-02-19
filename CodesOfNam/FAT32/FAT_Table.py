@@ -30,7 +30,7 @@ class FATTable:
                 
             if (cluster == FREE or cluster == EOF):
                 break
-            
+        
         return listClusters
     
     def getListSectors (self, starting_cluster):

@@ -32,7 +32,7 @@ class BootSector:
     def readBootSector (self):
         #!Read all the information from the boot sector
         self.jump_code = hex(int.from_bytes(self.rawData[0:3], byteorder = 'little'))
-        self.OEM_ID = str(self.rawData[3:11].decode(encoding = 'utf-8'))   
+        self.OEM_ID = str(self.rawData[3:11].strip().decode())   
         self.bytesPerSector = int.from_bytes(self.rawData[11:13], byteorder = 'little')
         self.sectorsPerCluster = int.from_bytes(self.rawData[13:14], byteorder = 'little')
         self.reservedSectors = int.from_bytes(self.rawData[14:16], byteorder = 'little')
@@ -55,7 +55,7 @@ class BootSector:
         self.bootSignature = hex(int.from_bytes(self.rawData[66:67], byteorder = 'little'))
         self.seriesNumber = hex(int.from_bytes(self.rawData[67:71], byteorder = 'little'))
         self.volumeLabel = int.from_bytes(self.rawData[71:82], byteorder = 'little')
-        self.FAT_Type = str(self.rawData[82:90].decode(encoding = 'utf-8'))
+        self.FAT_Type = str(self.rawData[82:90].strip().decode())
         
     def showInfoOfBootSector (self):
         print ("Jump Code:", self.jump_code)

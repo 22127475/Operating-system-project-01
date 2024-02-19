@@ -10,8 +10,8 @@ class Entry:
         self.rawData = data
         
         #? Infomation
-        self.name = None
-        self.extension = None
+        self.name = b""
+        self.extension = b""
         self.attribute = None
         self.creationTime = None
         self.creationDate = None
@@ -45,16 +45,16 @@ class Entry:
             self.listSubEntries = []
             self.status = int.from_bytes(self.rawData[0:1], byteorder = 'little')
             if (self.status == EMPTY):
-                self.name = ""
-                self.extension = ""
+                self.name = b""
+                self.extension = b""
                 return
             
             if (self.status == DELETED):
-                self.name = self.rawData[1:8].decode(encoding = 'utf-8')
+                self.name = self.rawData[1:8]
             else:
-                self.name = self.rawData[0:8].decode(encoding = 'utf-8')
+                self.name = self.rawData[0:8]
                 
-            self.extension = self.rawData[8:11].decode(encoding = 'utf-8')
+            self.extension = self.rawData[8:11]
             
             if (self.attribute == VOLUME_LABEL):
                 return
@@ -105,7 +105,7 @@ class Entry:
             firstCluster_LowOrder2Bytes = self.rawData[26:28][::-1]
             self.firstCluster = int.from_bytes(firstCluster_HighOrder2Bytes + firstCluster_LowOrder2Bytes, byteorder = 'big')
             #? I have tested my program and realize that I should add the second condition
-            if (self.status != DELETED and self.name.strip() not in (".", "..")):
+            if (self.status != DELETED and self.name.strip() not in (b".", b"..") and self.firstCluster != 0):
                 self.listClusters = self.FAT_table.getListCLusters(self.firstCluster)
                 self.listSectors = self.FAT_table.getListSectors(self.firstCluster)
     
@@ -132,7 +132,7 @@ class Entry:
                 self.name += self.listSubEntries[i].name
                 
         if (self.extension != ""):
-            self.name = self.name + '.' + self.extension
+            self.name = self.name.strip().decode() + '.' + self.extension.strip().decode()
             
     def readSDETData (self):
         if (self.attribute == DIRECTORY):

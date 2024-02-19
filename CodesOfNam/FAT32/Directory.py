@@ -14,7 +14,7 @@ class Directory:
         self.FAT_table = FAT_Table
         
         self.DET_dict = DET_Dict
-             
+
         self.is_root = True
         for i in range(0, len(self.rawData), 32):
             self.listEntries.append(Entry(self.volumeName, self.rawData[i:(i + 32)], FAT_Table))
