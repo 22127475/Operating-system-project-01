@@ -587,7 +587,7 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		printf("%d, %d", startSector, lastSector);
 	else
 		printf("%d, %d, ..., %d", startSector, startSector + 1, lastSector);
-	printf("\n-------------------------------\n");
+	printf("\n------------CONTENT------------\n");
 
 	std::vector<BYTE> res;
 	if (folder->isFolder())

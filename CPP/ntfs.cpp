@@ -326,7 +326,7 @@ void NTFS::read(const string &name) {
     MFT_Entry mft = mft_entries[des];
 
     mft.info();
-	printf("\n-------------------------------\n");
+	printf("\n------------CONTENT------------\n");
 
     if (mft.is_directory()) {
         // change_dir(name);
