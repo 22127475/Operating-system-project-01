@@ -84,3 +84,13 @@ string Utf16toUtf8(const wstring &wstr) {
     wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
     return convert.to_bytes(wstr);
 }
+bool isNumber(const std::string &str)
+{
+    for (char c : str)
+    {
+        c = c - '0';
+        if (c < 0 || c > 9)
+            return false;
+    }
+    return true;
+}

@@ -350,6 +350,10 @@ void NTFS::read(const string &name) {
             throw "Error: No index specified\n";
             return;
         }
+        if (!isNumber(tmp_split[1])) {
+            throw "Error: Invalid index\n";
+            return;
+        }
         uint64_t index = stoull(tmp_split[1]);
         for (auto &x : mft_entries[current_node.back()].sub_files_number)
             if (mft_entries[x].mft_record_number == index) {
@@ -412,6 +416,10 @@ bool NTFS::change_dir(string path) {
         if (paths.size() < 2) {
             // fprintf(stderr, "Error: No index specified\n");
             throw "Error: No index specified\n";
+            return false;
+        }
+        if (!isNumber(paths[1])) {
+            throw "Error: Invalid index\n";
             return false;
         }
         uint64_t index = stoull(paths[1]);

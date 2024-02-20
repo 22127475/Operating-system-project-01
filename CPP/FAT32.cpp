@@ -645,16 +645,7 @@ void FAT_32::print_base_in4()
 	printf("%C:\\ \n", this->diskName[4]);
 	this->printBootSector();
 }
-bool isNumber(const std::string& str)
-{
-	for (char c : str)
-	{
-		c = c - '0';
-		if (c < 0 || c > 9)
-			return false;
-	}
-	return true;
-}
+
 
 // Volume
 bool FAT_32::cd(std::string path)
@@ -715,7 +706,7 @@ bool FAT_32::cd(std::string path)
 			}
 			else
 			{
-				printf("Error: No index specified\n");
+				printf("Error: Invalid index\n");
 				return false;
 
 			}
@@ -889,7 +880,8 @@ void FAT_32::read(const std::string& name)
 		}
 		else
 		{
-			printf("Error: No index specified\n");
+			printf("Error: Invalid index\n");
+            // throw "Error: Invalid index\n";
 			return;
 
 		}
