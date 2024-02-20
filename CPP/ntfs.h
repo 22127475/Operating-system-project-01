@@ -34,7 +34,6 @@ public:
     // File Name
     uint64_t parent_mft_record_number;
     wstring file_name;
-    string file_namespace;
 
     // Data
     bool resident;
@@ -63,7 +62,7 @@ public:
     MFT_Entry() {}
     MFT_Entry(vector<BYTE> &data);
 
-    vector<string> convert2attribute(uint64_t flags);
+    vector<string> convert2attribute(uint32_t flags);
     void extract_standard_i4(vector<BYTE> &data, uint64_t start);
 
     void extract_file_name(vector<BYTE> &data, uint64_t start);
@@ -113,7 +112,7 @@ public:
     void child_linker();
 
     uint64_t find_mft_entry(const string &record_name);
-    // vector<BYTE> get_data(const string &name);
+    vector<BYTE> get_data(const string &name);
 
     bool change_dir(string path);
     wstring get_current_path();

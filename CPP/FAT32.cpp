@@ -1,4 +1,4 @@
-﻿#include "FAT32.h"
+#include "FAT32.h"
 // Support functions
 unsigned long littleEdian(const BYTE *arr, unsigned int n)
 {
@@ -78,7 +78,6 @@ CFolder::CFolder()
 	size = "";
 	cluster = {};
 	index = 0;
-	index = 0;
 }
 CFolder::CFolder(const std::string &name, const std::string &state, const std::string &size, const std::vector<long> &cluster,const int& index)
 {
@@ -88,7 +87,6 @@ CFolder::CFolder(const std::string &name, const std::string &state, const std::s
 	this->cluster = cluster;
 	this->index = index;
 
-	this->index = index;
 
 }
 bool CFolder::canPrint()
@@ -103,7 +101,6 @@ bool CFolder::canPrint()
 
 	}
 
-	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 		return false;
 
@@ -122,10 +119,8 @@ void CFolder::print(bool isFull)
 		printf("%s\n", this->name.c_str());
 		if (isFull)
 		{
-			printf("State: %s\n", this->state.c_str());
-			
 			printf("State: %s\n", binToState().c_str());
-			printf("Size: %s\n", this->size.c_str());
+			printf("Size: %s B\n", this->size.c_str());
 			printf("Cluster: ");
 			for (int i = 0; i < cluster.size() - 1; ++i)
 			{
@@ -586,11 +581,12 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	folder->print();
 	long startSector = clusterToSector(folder->cluster[0]);
 	printf("Sector: ");
-	for (int i = 0; i < folder->cluster.size(); ++i)
-	{
-		printf("%d, %d, ", startSector + i, startSector + i + 1);
-		++startSector;
-	}
+	
+	long lastSector = startSector + int(bootSector.sectorPerCluster) * folder->cluster.size() - 1;
+	if (lastSector - startSector == 1)
+		printf("%d, %d", startSector, lastSector);
+	else
+		printf("%d, %d, ..., %d", startSector, startSector + 1, lastSector);
 	printf("\n-------------------------------\n");
 
 	std::vector<BYTE> res;
@@ -618,8 +614,8 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		}
 
 		
-		long startOffset = clusterToSector(folder->cluster[0]) * 512;
-		long lastOffset = clusterToSector(folder->cluster[folder->cluster.size() - 1] + 1 + 1) * 512;
+		long startOffset = startSector * 512;
+		long lastOffset = (lastSector + 1) * 512;
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
@@ -706,7 +702,10 @@ bool FAT_32::cd(std::string path)
 						}
 					}
 					if (!found)
+					{
+						printf("Error: No such directory found \n");
 						return false;
+					}
 
 				}
 				curPath = tempPath;
@@ -714,8 +713,12 @@ bool FAT_32::cd(std::string path)
 				printf("\n");
 				return true;
 			}
+			else
+			{
+				printf("Error: No index specified\n");
+				return false;
 
-			return false;
+			}
 			
 		}
 
@@ -764,7 +767,8 @@ if (inPath[0] == ".")
 			temp = temp->findByName(pathName, false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("[ERROR] cd : Path not found\n");
+				printf("Error: No such directory found \n");
+
 
 				return false;
 			}
@@ -782,7 +786,8 @@ if (inPath[0] == ".")
 			temp = temp->findByName(inPath[i], false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("[ERROR] cd : Path not found\n");
+				printf("Error: No such directory found \n");
+
 				return false;
 			}
 			temPath.push_back(inPath[i]);
@@ -826,11 +831,6 @@ void FAT_32::ls()
 			for (int i = 0; i < 5; ++i)
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
-			// printf("%s", mode);
-			// printf("        ");
-			// printf("%02u", subFolder->index);
-			// printf("          ");
-			// printf("%s\n", subFolder->name.c_str());
 			printf("%s\t", mode);
 			printf("%04u\t", subFolder->index);
 			printf("%s\n", subFolder->name.c_str());
@@ -866,16 +866,12 @@ void FAT_32::read(const std::string& name)
 	}
 	if (command == "--index" || command == "-i")
 	{
-		printf("In index\n");
 		command = "";
 		for (int i = index + 1; i < tempName.size(); ++i)
 			command += tempName[i];
-		printf("Cmd: %s\n", command.c_str());
 		if (isNumber(command))
 		{
 			index = std::stoi(command);
-			printf("in isNum %d\n",index);
-
 			CFolder* temp = curPath;
 
 			if (temp->index != index)
@@ -886,15 +882,19 @@ void FAT_32::read(const std::string& name)
 					{
 						
 						tempName = subFolder->name;
-						printf("Found: %s\n", tempName.c_str());
 						break;
 					}
 				}
 			}
 		}
+		else
+		{
+			printf("Error: No index specified\n");
+			return;
+
+		}
 	}
 
-	printf("tempName: %s\n", tempName.c_str());
 	if (curPath->name == tempName)
 	{
 		res = printFolderInfo(curPath);
