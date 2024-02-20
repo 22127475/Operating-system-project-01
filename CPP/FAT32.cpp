@@ -122,8 +122,6 @@ void CFolder::print(bool isFull)
 		printf("%s\n", this->name.c_str());
 		if (isFull)
 		{
-			printf("State: %s\n", this->state.c_str());
-			
 			printf("State: %s\n", binToState().c_str());
 			printf("Size: %s\n", this->size.c_str());
 			printf("Cluster: ");
