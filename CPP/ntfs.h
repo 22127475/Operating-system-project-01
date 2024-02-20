@@ -34,6 +34,7 @@ public:
     // File Name
     uint64_t parent_mft_record_number;
     wstring file_name;
+    string file_namespace;
 
     // Data
     bool resident;
