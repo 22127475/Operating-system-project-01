@@ -1,4 +1,4 @@
-﻿#include "FAT32.h"
+#include "FAT32.h"
 // Support functions
 unsigned long littleEdian(const BYTE *arr, unsigned int n)
 {
@@ -78,7 +78,6 @@ CFolder::CFolder()
 	size = "";
 	cluster = {};
 	index = 0;
-	index = 0;
 }
 CFolder::CFolder(const std::string &name, const std::string &state, const std::string &size, const std::vector<long> &cluster,const int& index)
 {
@@ -88,7 +87,6 @@ CFolder::CFolder(const std::string &name, const std::string &state, const std::s
 	this->cluster = cluster;
 	this->index = index;
 
-	this->index = index;
 
 }
 bool CFolder::canPrint()
@@ -103,7 +101,6 @@ bool CFolder::canPrint()
 
 	}
 
-	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 		return false;
 
@@ -123,7 +120,7 @@ void CFolder::print(bool isFull)
 		if (isFull)
 		{
 			printf("State: %s\n", binToState().c_str());
-			printf("Size: %s\n", this->size.c_str());
+			printf("Size: %s B\n", this->size.c_str());
 			printf("Cluster: ");
 			for (int i = 0; i < cluster.size() - 1; ++i)
 			{
