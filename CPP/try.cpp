@@ -141,14 +141,26 @@ void run(Volume *volume) {
         printf("\n");
     }
 }
-
-string chooseDisk() {
-    DWORD drivesBitMask = GetLogicalDrives();
-
+vector<char> getDrive() {
     vector<char> drives;
-    for (int i = 0; i < 26; ++i)  // Assume there are at most 26 drive letters
-        if (drivesBitMask & (1 << i))
-            drives.push_back('A' + i);
+    for (char c = 'A'; c <= 'Z'; c++) {
+        string disk = "\\\\.\\" + string(1, c) + ":";
+        FILE *f = fopen(disk.c_str(), "rb");
+        if (f) {
+            drives.push_back(c);
+            fclose(f);
+        }
+    }
+    return drives;
+}
+string chooseDisk() {
+    vector<char> drives = getDrive();
+
+    // DWORD drivesBitMask = GetLogicalDrives();
+    // vector<char> drives;
+    // for (int i = 0; i < 26; ++i)  // Assume there are at most 26 drive letters
+    //     if (drivesBitMask & (1 << i))
+    //         drives.push_back('A' + i);
 
     printf("Available drives:\n");
     int i = 0;
@@ -172,6 +184,6 @@ string chooseDisk() {
 
     string rs(1, drives[num - 1]);
     printf("You have chosen drive %s\n", rs.c_str());
-    Sleep(500);
+    // Sleep(500);
     return rs;
 }

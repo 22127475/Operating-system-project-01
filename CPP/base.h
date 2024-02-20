@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <windows.h>
+// #include <windows.h>
 
 #include <locale>
 #include <codecvt>
@@ -13,7 +13,7 @@
 #include <codecvt>
 
 using namespace std;
-// using BYTE = unsigned char;
+using BYTE = unsigned char;
 constexpr int VBR_SIZE = 512;
 
 class Volume {
