@@ -586,11 +586,12 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	folder->print();
 	long startSector = clusterToSector(folder->cluster[0]);
 	printf("Sector: ");
-	for (int i = 0; i < folder->cluster.size(); ++i)
-	{
-		printf("%d, %d, ", startSector + i, startSector + i + 1);
-		++startSector;
-	}
+	
+	long lastSector = startSector + int(bootSector.sectorPerCluster) * folder->cluster.size() - 1;
+	if (lastSector - startSector == 1)
+		printf("%d, %d", startSector, lastSector);
+	else
+		printf("%d, %d, ..., %d", startSector, startSector + 1, lastSector);
 	printf("\n-------------------------------\n");
 
 	std::vector<BYTE> res;
@@ -706,7 +707,10 @@ bool FAT_32::cd(std::string path)
 						}
 					}
 					if (!found)
+					{
+						printf("Error: No such directory found \n");
 						return false;
+					}
 
 				}
 				curPath = tempPath;
@@ -714,8 +718,12 @@ bool FAT_32::cd(std::string path)
 				printf("\n");
 				return true;
 			}
+			else
+			{
+				printf("Error: No index specified\n");
+				return false;
 
-			return false;
+			}
 			
 		}
 
@@ -764,7 +772,8 @@ if (inPath[0] == ".")
 			temp = temp->findByName(pathName, false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("[ERROR] cd : Path not found\n");
+				printf("Error: No such directory found \n");
+
 
 				return false;
 			}
@@ -782,7 +791,8 @@ if (inPath[0] == ".")
 			temp = temp->findByName(inPath[i], false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("[ERROR] cd : Path not found\n");
+				printf("Error: No such directory found \n");
+
 				return false;
 			}
 			temPath.push_back(inPath[i]);
@@ -826,11 +836,6 @@ void FAT_32::ls()
 			for (int i = 0; i < 5; ++i)
 				if (subFolder->state[index[i]] == '1')
 					mode[i] = type[i];
-			// printf("%s", mode);
-			// printf("        ");
-			// printf("%02u", subFolder->index);
-			// printf("          ");
-			// printf("%s\n", subFolder->name.c_str());
 			printf("%s\t", mode);
 			printf("%04u\t", subFolder->index);
 			printf("%s\n", subFolder->name.c_str());
@@ -866,16 +871,12 @@ void FAT_32::read(const std::string& name)
 	}
 	if (command == "--index" || command == "-i")
 	{
-		printf("In index\n");
 		command = "";
 		for (int i = index + 1; i < tempName.size(); ++i)
 			command += tempName[i];
-		printf("Cmd: %s\n", command.c_str());
 		if (isNumber(command))
 		{
 			index = std::stoi(command);
-			printf("in isNum %d\n",index);
-
 			CFolder* temp = curPath;
 
 			if (temp->index != index)
@@ -886,15 +887,19 @@ void FAT_32::read(const std::string& name)
 					{
 						
 						tempName = subFolder->name;
-						printf("Found: %s\n", tempName.c_str());
 						break;
 					}
 				}
 			}
 		}
+		else
+		{
+			printf("Error: No index specified\n");
+			return res;
+
+		}
 	}
 
-	printf("tempName: %s\n", tempName.c_str());
 	if (curPath->name == tempName)
 	{
 		res = printFolderInfo(curPath);
