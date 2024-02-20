@@ -244,16 +244,9 @@ NTFS::NTFS(string name) {
 
         try {
             MFT_Entry mft_entry_info(mft_entry);
-            //! Here
+            //! Sector
             uint64_t num_sector = (i / 2 * mft_record_size + mft_offset) / bytes_per_sector + reserved_sectors;
             mft_entry_info.sector_list.push_back(num_sector);
-            // //? Sector of the data run
-            // for (size_t j = 0; j < mft_entry_info.num_cluster.size(); j++) {
-            //     uint64_t start = mft_entry_info.start_cluster[j] * sectors_per_cluster;
-            //     uint64_t number_of_sector = mft_entry_info.num_cluster[j] * sectors_per_cluster;
-            //     for (size_t k = 0; k < number_of_sector; k++)
-            //         mft_entry_info.sector_list.push_back(start + k);
-            // }
 
             mft_entries[mft_entry_info.mft_record_number] = mft_entry_info;
         }
@@ -391,7 +384,10 @@ void NTFS::read(const string &name) {
         return;
     }
 
-    wstring ext = mft.file_name.substr(mft.file_name.size() - 4);
+    wstring ext = mft.file_name;
+    if (mft.file_name.size() > 4)
+        ext = mft.file_name.substr(mft.file_name.size() - 4);
+
     if (ext != L".txt" && ext != L".TXT") {
         printf("Please use the appropriate reader to read this file.\n");
         return;
@@ -556,14 +552,19 @@ void MFT_Entry::info(const string &path) {
         printf("%s    ", s.c_str());
     printf("\n");
 
-    printf("Size: %u\n", real_size);
+    printf("Size: %u B\n", real_size);
 
-    printf("Include sector: %u\n", sector_list[0]);
-    if (sector_list.size() > 1) {
-        printf("The sector of the data-runs: ");
-        for (size_t i = 1; i < sector_list.size(); i++)
-            printf("%u   ", sector_list[i]);
-        printf("\n");
+    printf("Sector of this MFT: %u\n", sector_list[0]);
+
+    if (!resident) {
+        printf("-------------------------------\n");
+        printf("            | Start Cluster | Number of Cluster\n");
+        for (size_t i = 0; i < start_cluster.size(); i++) {
+            printf("Data-run % 3u|\t", i + 1);
+
+            printf("% 11u | ", start_cluster[i]);
+            printf("% 8u\n", num_cluster[i]);
+        }
     }
 }
 
