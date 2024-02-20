@@ -614,8 +614,8 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		}
 
 		
-		long startOffset = clusterToSector(folder->cluster[0]) * 512;
-		long lastOffset = clusterToSector(folder->cluster[folder->cluster.size() - 1] + 1 + 1) * 512;
+		long startOffset = startSector * 512;
+		long lastOffset = (lastSector + 1) * 512;
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
