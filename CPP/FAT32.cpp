@@ -890,7 +890,7 @@ void FAT_32::read(const std::string& name)
 		else
 		{
 			printf("Error: No index specified\n");
-			return res;
+			return;
 
 		}
 	}
