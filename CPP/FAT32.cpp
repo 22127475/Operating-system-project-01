@@ -89,10 +89,19 @@ CFolder::CFolder(const std::string &name, const std::string &state, const std::s
 
 
 }
-bool CFolder::canPrint()
+bool CFolder::isHidden()
+{
+	return state[6] == '1';
+}
+bool CFolder::isSystem()
+{
+	return state[5] == '1' || state[4] == '1';
+}
+bool CFolder::canPrint(bool printHidden, bool printSystem)
 {
 	
 	bool res = false;
+
 	for (int i = 0; i < this->name.size(); ++i)
 	{
 		if (name[i] >= 'A' && name[i] <= 'Z' || name[i] >= 'a' && name[i] <= 'z')
@@ -102,6 +111,25 @@ bool CFolder::canPrint()
 
 	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 		return false;
+
+	return res;
+
+	/*bool res = false;
+	for (int i = 0; i < this->name.size(); ++i)
+	{
+		if (name[i] >= 'A' && name[i] <= 'Z' || name[i] >= 'a' && name[i] <= 'z')
+		{
+			res = true;
+		}
+
+	}
+
+	if (this->isSystem() && printSystem)
+		res = res && true;
+
+	if (this->isHidden() && printHidden)
+		res = res && true;*/
+	
 
 	return res;
 }
@@ -421,8 +449,12 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 		std::string size = std::to_string(littleEdian(endtry.size, 4));
 
 		CFolder* newFolder = new CFolder(name, state, size, clusterLinkedList, idx);
+
 		if (!newFolder->isFolder() && !hasLFN && name.size() > 3)
 			name.insert(name.end() - 3, '.');
+		
+		newFolder->name = name;
+		
 		if (newFolder->canPrint())
 		{
 			delete newFolder;
@@ -564,6 +596,7 @@ void FAT_32::printRDET(CFolder &folder, std::string time, bool last)
 		else
 		{
 
+			
 			printRDET(*folder.subItem[i], time + "    ", true);
 		}
 	}
@@ -596,6 +629,7 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	if (folder->isFolder())
 	{
 		tree();
+
 	}
 	else
 	{
@@ -838,7 +872,7 @@ void FAT_32::ls()
 		}
 	}
 }
-void FAT_32::tree()
+void FAT_32::tree(bool printHidden, bool printSystem)
 {
 	printRDET(*curPath);
 }

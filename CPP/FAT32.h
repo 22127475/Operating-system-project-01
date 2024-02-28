@@ -48,6 +48,9 @@ public:
 	bool isFolder();
 	void getChild(std::vector<CFolder*>);
 	std::string binToState();
+	bool isHidden();
+	bool isSystem();
+
 	bool canPrint();
 	void print(bool isFull = true);
 	CFolder* findByID(const int &id);
@@ -90,7 +93,7 @@ public:
 	bool cd(string path);
 	std::string csd();
 	wstring pwd();
-	void tree();
+	void tree(bool printHidden = false, bool printSystem = false);
 	void ls();
 	void read(const string& name = "");
 };

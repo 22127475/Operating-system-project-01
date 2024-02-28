@@ -119,6 +119,7 @@ void run(Volume *volume) {
         // printf("%s\n", Utf16toUtf8(volume->cwd()).c_str());
 
         else if (command[0] == "ls" || command[0] == "dir") {
+            command.push_back("");
             vector<string> tmp = splitString(command[1], " ");
             bool hidden = false, system = false;
             for (auto &i : tmp) {
@@ -132,6 +133,7 @@ void run(Volume *volume) {
             volume->ls(hidden, system);
         }
         else if (command[0] == "tree") {
+            command.push_back("");
             vector<string> tmp = splitString(command[1], " ");
             bool hidden = false, system = false;
             for (auto &i : tmp) {
