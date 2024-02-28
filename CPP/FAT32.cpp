@@ -619,6 +619,8 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		
 		long startOffset = startSector * 512;
 		long lastOffset = (lastSector + 1) * 512;
+		printf("Start : %d\nEnd : %d\n", startOffset, lastOffset);
+		printf("End : %d\n", folder->cluster.back()*int(bootSector.sectorPerCluster) * 512);
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
@@ -629,8 +631,13 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 			fread(&character, sizeof(BYTE), 1, f);
 			if (character == 0)
 				break;
-			res.push_back(character);
+			//if (character != 0)
+				res.push_back(character);
 		}
+		/*for (auto cluster : folder->cluster)
+		{
+			if ()
+		}*/
 		fclose(f);
 	}
 
