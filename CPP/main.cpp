@@ -9,20 +9,20 @@ int main() {
     system("cls");
     print_team();
 
-    string name = chooseDisk();
     // string name = "D";
+    // string name = chooseDisk();
+    vector<string> disk = chooseDisk();
     Volume *volume;
     system("cls");
-
-    int check = checkVolume(name);
-    if (check == 1) {
+    
+    if (disk[1] == "FAT32   ") {
         // fprintf(stderr, "It is a FAT32 volume\n");
-        volume = new FAT_32(name);
+        volume = new FAT_32(disk[0]);
         run(volume);
     }
-    else if (check == 2) {
+    else if (disk[1] == "NTFS    ") {
         // fprintf(stderr, "It is a NTFS volume\n\n");
-        volume = new NTFS(name);
+        volume = new NTFS(disk[0]);
         run(volume);
     }
     else {

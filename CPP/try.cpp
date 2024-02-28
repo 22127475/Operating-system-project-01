@@ -11,44 +11,19 @@ void print_team() {
 
     printf("\n");
 }
-
-
-int checkVolume(string name) {
-    name = "\\\\.\\" + name + ":";
-    FILE *volume = fopen(name.c_str(), "rb");
-    if (!volume) {
-        fprintf(stderr, "Error: Permission denied\n");
-        exit(1);
-    }
-
-    string format, buffer;
-    format.resize(8);
-
-    buffer.resize(3);
-    //f
-    // (buffer.data(), 1, 3, volume);
-    fread(&buffer[0], 1, 3, volume);
-    //fread(format.data(), 1, 8, volume);
-    fread(&format[0], 1, 8, volume);
-    if (format == "NTFS    ") {
-        fclose(volume);
-        return 2;
-    }
-
-    buffer.resize(0x52 - 0xB);
-    //fread(buffer.data(), 1, 0x52 - 0xB, volume);
-    fread(&buffer[0], 1, 0x52 - 0xB, volume);
-    //fread(format.data(), 1, 8, volume);
-    fread(&format[0], 1, 8, volume);
-    if (format == "FAT32   ") {
-        fclose(volume);
-        return 1;
-    }
-
-    fclose(volume);
-    return 0;
+void print_help() {
+    printf("Supported commands:\n");
+    printf("  'info' - print volume information\n");
+    printf("  'cd [path]' - change directory\n");
+    printf("  'cd -i [ID]' or 'cd --index [ID]' - change directory by index\n");
+    printf("  'pwd' - print current working directory\n");
+    printf("  'ls' or 'dir' - list directory contents\n");
+    printf("  'tree' - print directory tree\n");
+    printf("  'read [file]' - print file contents\n");
+    printf("  'cls' or 'clear' - clear the screen\n");
+    printf("  'quit' or 'exit' - exit the program\n");
+    printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
 }
-
 void try_read(Volume *volume, std::vector<std::string> name) {
     try {
         if (name.size() == 1)
@@ -82,19 +57,7 @@ void try_cd(Volume *volume, vector<string> command) {
         fprintf(stderr, "%s", msg);
     }
 }
-void print_help() {
-    printf("Supported commands:\n");
-    printf("  'info' - print volume information\n");
-    printf("  'cd [path]' - change directory\n");
-    printf("  'cd -i [ID]' or 'cd --index [ID]' - change directory by index\n");
-    printf("  'pwd' - print current working directory\n");
-    printf("  'ls' or 'dir' - list directory contents\n");
-    printf("  'read [file]' - print file contents\n");
-    printf("  'tree' - print directory tree\n");
-    printf("  'cls' or 'clear' - clear the screen\n");
-    printf("  'quit' or 'exit' - exit the program\n");
-    printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
-}
+
 
 void run(Volume *volume) {
     volume->print_base_in4();
@@ -165,20 +128,41 @@ void run(Volume *volume) {
         printf("\n");
     }
 }
-vector<char> getDrive() {
-    vector<char> drives;
+vector<vector<string>> getDrive() {
+    vector<vector<string>> drives;
+    string format, buffer;
     for (char c = 'A'; c <= 'Z'; c++) {
         string disk = "\\\\.\\" + string(1, c) + ":";
         FILE *f = fopen(disk.c_str(), "rb");
         if (f) {
-            drives.push_back(c);
+            format.resize(8);
+
+            buffer.resize(3);
+            fread(&buffer[0], 1, 3, f);
+            fread(&format[0], 1, 8, f);
+            if (format == "NTFS    ") {
+                drives.push_back({string(1, c), format});
+                fclose(f);
+                continue;
+            }
+
+            buffer.resize(0x52 - 0xB);
+            fread(&buffer[0], 1, 0x52 - 0xB, f);
+            fread(&format[0], 1, 8, f);
+            if (format == "FAT32   ") {
+                drives.push_back({string(1, c), format});
+                fclose(f);
+                continue;
+            }
+
+            drives.push_back({string(1, c), "Other format"});
             fclose(f);
         }
     }
     return drives;
 }
-string chooseDisk() {
-    vector<char> drives = getDrive();
+vector<string> chooseDisk() {
+    vector<vector<string>> drives = getDrive();
 
     // DWORD drivesBitMask = GetLogicalDrives();
     // vector<char> drives;
@@ -188,8 +172,8 @@ string chooseDisk() {
 
     printf("Available drives:\n");
     int i = 0;
-    for (char drive : drives)
-        printf("%d.  %c:\\\n", ++i, drive);
+    for (auto drive : drives)
+        printf("%d.  %s:\\ -- %s\n", ++i, drive[0].c_str(), drive[1].c_str());
 
     int num;
     char nextChar;
@@ -206,8 +190,8 @@ string chooseDisk() {
     } while (num < 1 || num > drives.size());
     while ((nextChar = getchar()) != '\n' && nextChar != EOF) {}
 
-    string rs(1, drives[num - 1]);
-    printf("You have chosen drive %s\n", rs.c_str());
+    vector<string> rs = drives[num - 1];
+    printf("You have chosen drive %s\n", rs[0].c_str());
     // Sleep(500);
     return rs;
 }

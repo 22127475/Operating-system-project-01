@@ -114,7 +114,7 @@ public:
     void child_linker();
 
     uint64_t find_mft_entry(const string &record_name);
-    vector<BYTE> get_data(const string &name);
+    // vector<BYTE> get_data(const string &name);
 
     bool change_dir(string path);
     wstring get_current_path();

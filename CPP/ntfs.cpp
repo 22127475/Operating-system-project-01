@@ -320,13 +320,13 @@ void NTFS::print_base_in4() {
     printf("\n");
     printf("Disk:                       %s\\\n", disk_name.c_str());
     printf("OEM ID:                     %s\n", oem_id.c_str());
-    printf("Bytes per sector:           %u\n", bytes_per_sector);
+    printf("Bytes per sector:           %u B\n", bytes_per_sector);
     printf("Sectors per cluster:        %u\n", sectors_per_cluster);
     printf("Reserved sectors:           %u\n", reserved_sectors);
     printf("Total sectors:              %u\n", total_sectors);
-    printf("First cluster of MFT:       %u\n", mft_cluster_number);
-    printf("First cluster of MFTMirr:   %u\n", mft_mirror_cluster_number);
-    printf("MFT record size:            %d\n", mft_record_size);
+    printf("First cluster of $MFT:      %u\n", mft_cluster_number);
+    printf("First cluster of $MFTMirr:  %u\n", mft_mirror_cluster_number);
+    printf("MFT record size:            %d B\n", mft_record_size);
 }
 
 uint64_t NTFS::find_mft_entry(const string &record_name) {
@@ -564,17 +564,17 @@ void MFT_Entry::info(const string &path) {
 
     printf("Size: %u B\n", real_size);
 
-    printf("Sector of this MFT: %u\n", sector_list[0]);
+    printf("Sector of this $MFT record: %u\n", sector_list[0]);
 
     if (!resident) {
         printf("-------------------------------\n");
-        printf("            |     Start     |     Number of    \n");
-        printf("            |    Cluster    |     Clusters     \n");
+        printf("            |         Start |   Number of    \n");
+        printf("            |       Cluster |   Clusters     \n");
         for (size_t i = 0; i < start_cluster.size(); i++) {
             printf("Data-run % 3u|\t", i + 1);
 
             printf("% 11u | ", start_cluster[i]);
-            printf("% 8u\n", num_cluster[i]);
+            printf("% 6u\n", num_cluster[i]);
         }
     }
 }
