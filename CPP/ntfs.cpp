@@ -540,6 +540,8 @@ void MFT_Entry::info(const string &path) {
     // Volume::read();
     printf("--------------Info-------------\n");
     wprintf(L"Name: %ls\n", file_name.c_str());
+    printf("Filename namespace: %s\n", file_namespace.c_str());
+
     printf("Attribute: ");
     for (string &s : attribute)
         printf("%s    ", s.c_str());
