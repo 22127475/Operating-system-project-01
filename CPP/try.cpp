@@ -118,10 +118,32 @@ void run(Volume *volume) {
         }
         // printf("%s\n", Utf16toUtf8(volume->cwd()).c_str());
 
-        else if (command[0] == "ls" || command[0] == "dir")
-            volume->ls();
-        else if (command[0] == "tree")
-            volume->tree();
+        else if (command[0] == "ls" || command[0] == "dir") {
+            vector<string> tmp = splitString(command[1], " ");
+            bool hidden = false, system = false;
+            for (auto &i : tmp) {
+                if (i == "-a" || i == "--all")
+                    hidden = system = true;
+                else if (i == "-s" || i == "--system")
+                    system = true;
+                else if (i == "-h" || i == "--hidden")
+                    hidden = true;
+            }
+            volume->ls(hidden, system);
+        }
+        else if (command[0] == "tree") {
+            vector<string> tmp = splitString(command[1], " ");
+            bool hidden = false, system = false;
+            for (auto &i : tmp) {
+                if (i == "-a" || i == "--all")
+                    hidden = system = true;
+                else if (i == "-s" || i == "--system")
+                    system = true;
+                else if (i == "-h" || i == "--hidden")
+                    hidden = true;
+            }
+            volume->tree(hidden, system);
+        }
         else if (command[0] == "read")
             try_read(volume, command);
 

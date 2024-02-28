@@ -73,7 +73,8 @@ public:
 
     bool is_directory();
     bool is_archive();
-    bool is_hidden_system();
+    bool is_hidden();
+    bool is_system();
 
     void info(const string &path = "");
 };
@@ -117,8 +118,8 @@ public:
 
     bool change_dir(string path);
     wstring get_current_path();
-    void list(bool print_hidden = false);
-    void print_tree(uint64_t entry = 0, string prefix = "", bool last = false);
+    void list(bool hidden = false, bool system = false);
+    void print_tree(bool hidden = false, bool system = false, uint64_t entry = 0, string prefix = "", bool last = false);
 
     void print_vbr();
     void print_base_in4();
@@ -131,11 +132,21 @@ public: //? polymorphism
         // Volume::pwd();
         return get_current_path();
     }
-    void ls() {
-        list();
+    void ls(string permission = "") {
+        vector<string> tmp = splitString(permission, " ");
+        bool hidden = false, system = false;
+        for (auto &i : tmp) {
+            if (i == "-a" || i == "--all")
+                hidden = system = true;
+            else if (i == "-s" || i == "--system")
+                system = true;
+            else if (i == "-h" || i == "--hidden")
+                hidden = true;
+        }
+        list(hidden, system);
     }
-    void tree() {
-        print_tree();
+    void tree(bool hidden = false, bool system = false) {
+        print_tree(hidden, system);
     }
     void read(const string &name = "");
 };

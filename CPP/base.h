@@ -27,11 +27,11 @@ public:
         printf("Path\n----\n");
         return L"";
     }
-    virtual void ls() {
+    virtual void ls(bool hidden = false, bool system = false) {
         printf(" Mode \t ID \tFile name\n");
         printf("------\t----\t---------\n");
     }
-    virtual void tree() = 0;
+    virtual void tree(bool hidden = false, bool system = false) = 0;
     virtual void read(const string &name = "") = 0;
 };
 

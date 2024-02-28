@@ -58,7 +58,7 @@ vector<string> MFT_Entry::convert2attribute(uint64_t flags) {
     if (flags & 0x1000) attributes.push_back("OFFLINE");
     if (flags & 0x2000) attributes.push_back("NOT_CONTENT_INDEXED");
     if (flags & 0x4000) attributes.push_back("ENCRYPTED");
-    if (flags & 0x1000000) attributes.push_back("DIRECTORY");
+    if (flags & 0x10000000) attributes.push_back("DIRECTORY");
     return attributes;
 }
 void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
@@ -190,9 +190,15 @@ bool MFT_Entry::is_archive() {
             return true;
     return false;
 }
-bool MFT_Entry::is_hidden_system() {
+bool MFT_Entry::is_hidden() {
     for (auto &x : attribute)
-        if (x == "HIDDEN" || x == "SYSTEM")
+        if (x == "HIDDEN")
+            return true;
+    return false;
+}
+bool MFT_Entry::is_system() {
+    for (auto &x : attribute)
+        if (x == "SYSTEM")
             return true;
     return false;
 }
@@ -372,7 +378,7 @@ void NTFS::read(const string &name) {
     if (mft.is_directory()) {
         // change_dir(name);
         current_node.push_back(des);
-        tree();
+        tree(false, false);
         // change_dir("..");
         current_node.pop_back();
         return;
@@ -488,13 +494,17 @@ string attribute_bit(vector<string> &attribute) {
     }
     return attr;
 }
-void NTFS::list(bool print_hidden) {
+void NTFS::list(bool hidden, bool system) {
     uint64_t node = current_node.back();
 
     Volume::ls();
     for (auto &x : mft_entries[node].sub_files_number) {
         // if (!print_hidden && mft_entries[x].is_hidden_system())
             // continue;
+        if (!hidden && mft_entries[x].is_hidden())
+            continue;
+        if (!system && mft_entries[x].is_system())
+            continue;
         string attr = attribute_bit(mft_entries[x].attribute);
         printf("%s\t", attr.c_str());
         uint64_t id = mft_entries[x].mft_record_number;
@@ -505,7 +515,7 @@ void NTFS::list(bool print_hidden) {
         // printf("%s\n", Utf16toUtf8(name).c_str());
     }
 }
-void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
+void NTFS::print_tree(bool hidden, bool system, uint64_t entry, string prefix, bool last) {
     if (entry == 0) entry = current_node.back();
     MFT_Entry mft = mft_entries[entry];
 
@@ -515,22 +525,27 @@ void NTFS::print_tree(uint64_t entry, string prefix, bool last) {
     if (mft.is_archive())
         return;
 
+
     int lst = mft.sub_files_number.size() - 1;
-    while (lst >= 0 && mft_entries[mft.sub_files_number[lst]].is_hidden_system())
+    while (lst >= 0 && ((!hidden && mft_entries[mft.sub_files_number[lst]].is_hidden()) 
+                    || (!system && mft_entries[mft.sub_files_number[lst]].is_system())))
         lst--; //? Bỏ qua các file ẩn hay hệ thống
     for (int i = 0; i < mft.sub_files_number.size(); i++) {
-        if (mft_entries[mft.sub_files_number[i]].is_hidden_system())
+        if (mft_entries[mft.sub_files_number[i]].is_hidden() && !hidden)
             continue;
+        if (mft_entries[mft.sub_files_number[i]].is_system() && !system)
+            continue;
+
         printf("%s", (prefix + "+---").c_str());
         if (i != lst) {
             // printf("%s", (prefix + char(195) + char(196)).c_str());
             // print_tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
-            print_tree(mft.sub_files_number[i], prefix + "|   ", false);
+            print_tree(hidden, system, mft.sub_files_number[i], prefix + "|   ", false);
         }
         else {
             // printf("%s", (prefix + char(192) + char(196)).c_str());
             // print_tree(mft.sub_files_number[i], prefix + "  ", true);
-            print_tree(mft.sub_files_number[i], prefix + "    ", true);
+            print_tree(hidden, system, mft.sub_files_number[i], prefix + "    ", true);
         }
     }
 }
