@@ -612,7 +612,7 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 
 		if (ext != "txt" && ext != "TXT")
 		{
-			printf("Open: \n\t %s \nwith another app \n", folder->name.c_str());
+			printf("Please use the appropriate reader to read this file.\n");
 			return res;
 		}
 
