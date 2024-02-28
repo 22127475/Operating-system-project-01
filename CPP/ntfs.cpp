@@ -43,7 +43,7 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     sub_files_number.resize(0); // Initialize the child list
 }
 
-vector<string> MFT_Entry::convert2attribute(uint32_t flags) {
+vector<string> MFT_Entry::convert2attribute(uint64_t flags) {
     vector<string> attributes;
     if (flags & 0x1) attributes.push_back("READ ONLY");
     if (flags & 0x2) attributes.push_back("HIDDEN");
@@ -58,7 +58,7 @@ vector<string> MFT_Entry::convert2attribute(uint32_t flags) {
     if (flags & 0x1000) attributes.push_back("OFFLINE");
     if (flags & 0x2000) attributes.push_back("NOT_CONTENT_INDEXED");
     if (flags & 0x4000) attributes.push_back("ENCRYPTED");
-    if (flags & 0x10000000) attributes.push_back("DIRECTORY");
+    if (flags & 0x1000000) attributes.push_back("DIRECTORY");
     return attributes;
 }
 void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
@@ -73,7 +73,7 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
     created_time = cal(data, beginIS, beginIS);
     last_modified_time = cal(data, beginIS + 0x8, beginIS + 0x10);
 
-    uint32_t flag = cal(data, beginIS + 0x20, beginIS + 0x24);
+    uint64_t flag = cal(data, beginIS + 0x20, beginIS + 0x24);
     attribute = convert2attribute(flag);
 }
 
@@ -493,8 +493,8 @@ void NTFS::list(bool print_hidden) {
 
     Volume::ls();
     for (auto &x : mft_entries[node].sub_files_number) {
-        if (!print_hidden && mft_entries[x].is_hidden_system())
-            continue;
+        // if (!print_hidden && mft_entries[x].is_hidden_system())
+            // continue;
         string attr = attribute_bit(mft_entries[x].attribute);
         printf("%s\t", attr.c_str());
         uint64_t id = mft_entries[x].mft_record_number;
@@ -551,7 +551,8 @@ void MFT_Entry::info(const string &path) {
 
     if (!resident) {
         printf("-------------------------------\n");
-        printf("            | Start Cluster | Number of Cluster\n");
+        printf("            |     Start     |     Number of    \n");
+        printf("            |    Cluster    |     Clusters     \n");
         for (size_t i = 0; i < start_cluster.size(); i++) {
             printf("Data-run % 3u|\t", i + 1);
 

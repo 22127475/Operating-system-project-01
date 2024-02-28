@@ -63,7 +63,7 @@ public:
     MFT_Entry() {}
     MFT_Entry(vector<BYTE> &data);
 
-    vector<string> convert2attribute(uint32_t flags);
+    vector<string> convert2attribute(uint64_t flags);
     void extract_standard_i4(vector<BYTE> &data, uint64_t start);
 
     void extract_file_name(vector<BYTE> &data, uint64_t start);

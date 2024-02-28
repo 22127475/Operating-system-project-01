@@ -704,7 +704,7 @@ bool FAT_32::cd(std::string path)
 					}
 					if (!found)
 					{
-						printf("Error: No such directory found \n");
+						//printf("Error: No such directory found \n");
 						return false;
 					}
 
@@ -768,7 +768,7 @@ if (inPath[0] == ".")
 			temp = temp->findByName(pathName, false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("Error: No such directory found \n");
+				//printf("Error: No such directory found \n");
 
 
 				return false;
@@ -787,7 +787,7 @@ if (inPath[0] == ".")
 			temp = temp->findByName(inPath[i], false);
 			if (temp == nullptr || !temp->isFolder())
 			{
-				printf("Error: No such directory found \n");
+				//printf("Error: No such directory found \n");
 
 				return false;
 			}
@@ -845,7 +845,6 @@ void FAT_32::tree()
 void FAT_32::read(const std::string& name)
 {
 	std::string tempName = name;
-	printf("Input: %s\n", name.c_str());
 	if (tempName.size() == 0)
 	{
 		tempName = curPath->name;
@@ -881,7 +880,6 @@ void FAT_32::read(const std::string& name)
 				{
 					if(subFolder->index == index)
 					{
-						
 						tempName = subFolder->name;
 						break;
 					}
