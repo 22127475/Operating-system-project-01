@@ -132,17 +132,7 @@ public: //? polymorphism
         // Volume::pwd();
         return get_current_path();
     }
-    void ls(string permission = "") {
-        vector<string> tmp = splitString(permission, " ");
-        bool hidden = false, system = false;
-        for (auto &i : tmp) {
-            if (i == "-a" || i == "--all")
-                hidden = system = true;
-            else if (i == "-s" || i == "--system")
-                system = true;
-            else if (i == "-h" || i == "--hidden")
-                hidden = true;
-        }
+    void ls(bool hidden = false, bool system = false) {
         list(hidden, system);
     }
     void tree(bool hidden = false, bool system = false) {

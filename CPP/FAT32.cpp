@@ -852,7 +852,7 @@ std::string FAT_32::csd()
 
 	return currentPath;
 }
-void FAT_32::ls()
+void FAT_32::ls(bool printHidden, bool printSystem)
 {
 	int index[] = { 3,2,7,6,5,4 };
 	char type[] = { 'd', 'a', 'r','h','s','s' };

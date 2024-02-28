@@ -51,7 +51,7 @@ public:
 	bool isHidden();
 	bool isSystem();
 
-	bool canPrint();
+	bool canPrint(bool printHidden = false, bool printSystem = false);
 	void print(bool isFull = true);
 	CFolder* findByID(const int &id);
 	CFolder* findByName(std::string fileName, bool searchAll = true);
@@ -94,7 +94,7 @@ public:
 	std::string csd();
 	wstring pwd();
 	void tree(bool printHidden = false, bool printSystem = false);
-	void ls();
+	void ls(bool printHidden = false, bool printSystem = false);
 	void read(const string& name = "");
 };
 
