@@ -92,7 +92,6 @@ CFolder::CFolder(const std::string &name, const std::string &state, const std::s
 bool CFolder::canPrint()
 {
 	
-	
 	bool res = false;
 	for (int i = 0; i < this->name.size(); ++i)
 	{
@@ -113,7 +112,6 @@ void CFolder::print(bool isFull)
 	{
 		if (isFull)
 		{
-			printf("ID: %d\n", this->index);
 			printf("Name: ");
 		}
 		printf("%s\n", this->name.c_str());
@@ -121,13 +119,15 @@ void CFolder::print(bool isFull)
 		{
 			printf("State: %s\n", binToState().c_str());
 			printf("Size: %s B\n", this->size.c_str());
-			printf("Cluster: ");
+			printf("Cluster: %d | %d", cluster[0], cluster.size());
+	/*		printf("Cluster: ", cluster[0], cluster.size());
+
 			for (int i = 0; i < cluster.size() - 1; ++i)
 			{
 				printf("%d,", cluster[i]);
 			}
 			if (cluster.size() > 0)
-				printf("%d", cluster[cluster.size() - 1]);
+				printf("%d", cluster[cluster.size() - 1]);*/
 			printf("\n");
 		}
 	}
@@ -335,25 +335,27 @@ void FAT_32::makeRDET()
 
 	int idx = 0;
 	readRDET(startSector * 512, this->root, idx);
+	
 
 }
 void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 {
 
 	std::vector<int> entries = numberOfFile(offset);
-	std::vector<CFolder *> res;
 
+	std::vector<CFolder *> res;
 	bool hasLFN = false;
 	std::string name = "";
 	FILE *f;
 	f = fopen(diskName.c_str(), "rb");
 
 	fseek(f, offset, SEEK_SET);
-
 	std::vector<std::string> lfn;
 
 	for (int i = 0; i < entries.size(); ++i)
 	{
+
+
 		for (int j = 0; j < entries[i]; ++j)
 		{
 			hasLFN = true;
@@ -380,7 +382,7 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 			}
 			name = normalization(name);
 
-			name += ".";
+			//name += ".";
 			for (int i = 0; i < 3; ++i)
 			{
 				name += endtry.ext[i];
@@ -407,17 +409,20 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 
 		}
 
-		while (name.back() == '.')
-			name.pop_back();
+		/*while (name.back() == '.')
+			name.pop_back();*/
 
+		
 		std::string state = hexToBin(endtry.OB);
 		long startCluster = littleEdian({ endtry.clusterLo[0], endtry.clusterLo[1], endtry.clusterHi[0], endtry.clusterHi[1] });
 
 		std::vector<long> clusterLinkedList = clusterLinkListFrom(startCluster);
+		
 		std::string size = std::to_string(littleEdian(endtry.size, 4));
 
 		CFolder* newFolder = new CFolder(name, state, size, clusterLinkedList, idx);
-
+		if (!newFolder->isFolder() && !hasLFN && name.size() > 3)
+			name.insert(name.end() - 3, '.');
 		if (newFolder->canPrint())
 		{
 			delete newFolder;
@@ -435,9 +440,9 @@ void FAT_32::readRDET(long offset, CFolder &folder, int& idx)
 	fclose(f);
 	folder.getChild(res);
 
-	for (int i = 2; i < folder.subItem.size(); ++i)
+	for (int i = 0; i < folder.subItem.size(); ++i)
 	{
-		if (folder.subItem[i]->isFolder())
+		if (folder.subItem[i]->isFolder() && folder.subItem[i]->canPrint())
 		{
 			
 			for (int j = 0; j < folder.subItem[i]->cluster.size(); ++j)
@@ -487,11 +492,6 @@ std::vector<int> FAT_32::numberOfFile(long offset)
 	while (temp.OB != 0)
 	{
 		fread(&temp, sizeof(temp), 1, f);
-		/*if (temp.name[0] == 0xE5)
-		{
-			printf("Deleted\n");
-			continue;
-		}*/
 		if (temp.OB == 15)
 		{
 			sub++;
@@ -580,14 +580,17 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 	// Volume::read();
 	folder->print();
 	long startSector = clusterToSector(folder->cluster[0]);
-	printf("Sector: ");
-	
 	long lastSector = startSector + int(bootSector.sectorPerCluster) * folder->cluster.size() - 1;
+
+	printf("Sector: %d | %d\n",startSector, folder->cluster.size() * int(bootSector.sectorPerCluster));
+	
+	/*printf("Sector: ");
+	
 	if (lastSector - startSector == 1)
 		printf("%d, %d", startSector, lastSector);
 	else
-		printf("%d, %d, ..., %d", startSector, startSector + 1, lastSector);
-	printf("\n------------CONTENT------------\n");
+		printf("%d, %d, ..., %d", startSector, startSector + 1, lastSector);*/
+	printf("------------CONTENT------------\n");
 
 	std::vector<BYTE> res;
 	if (folder->isFolder())
@@ -616,6 +619,8 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 		
 		long startOffset = startSector * 512;
 		long lastOffset = (lastSector + 1) * 512;
+		printf("Start : %d\nEnd : %d\n", startOffset, lastOffset);
+		printf("End : %d\n", folder->cluster.back()*int(bootSector.sectorPerCluster) * 512);
 		FILE *f;
 		f = fopen(diskName.c_str(), "rb");
 		fseek(f, startOffset, SEEK_SET);
@@ -626,8 +631,13 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 			fread(&character, sizeof(BYTE), 1, f);
 			if (character == 0)
 				break;
-			res.push_back(character);
+			//if (character != 0)
+				res.push_back(character);
 		}
+		/*for (auto cluster : folder->cluster)
+		{
+			if ()
+		}*/
 		fclose(f);
 	}
 
