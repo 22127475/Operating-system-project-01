@@ -82,9 +82,10 @@ public:
 	long clusterToSector(int cluster);
 	void readRDET(long offset, CFolder& folder, int& idx);
 	void makeRDET();
-	void printRDET(CFolder& folder, std::string time = "", bool last = false);
+	void printRDET(CFolder& folder,bool printHidden = false, bool printSystem = false, std::string time = "", bool last = false);
 	void printRDET();
-	CFolder* findFolderByName(CFolder& folder, std::string folderName, bool searchAll = true);
+	bool hasIndex(std::string& command);
+	//CFolder* findFolderByName(CFolder& folder, std::string folderName, bool searchAll = true);
 	std::vector<BYTE> printFolderInfo(CFolder* folder);
 
 
