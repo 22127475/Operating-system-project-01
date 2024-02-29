@@ -1,6 +1,7 @@
 #include "base.h"
 using namespace std;
 
+// team information
 void print_team() {
     printf("Members:\n");
     printf("22127026                 On Gia Bao\n");
@@ -11,6 +12,7 @@ void print_team() {
 
     printf("\n");
 }
+// Supported commands
 void print_help() {
     printf("Supported commands:\n");
     printf("  'info' - print volume information\n");
@@ -24,6 +26,7 @@ void print_help() {
     printf("  'quit' or 'exit' - exit the program\n");
     printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
 }
+// read the file
 void try_read(Volume *volume, std::vector<std::string> name) {
     try {
         if (name.size() == 1)
@@ -35,6 +38,7 @@ void try_read(Volume *volume, std::vector<std::string> name) {
         fprintf(stderr, "Error: %s\n", msg);
     }
 }
+// change directory
 void try_cd(Volume *volume, vector<string> command) {
     if (command[0] == "cd.." || command[0] == "cd." || command[0] == "cd\\") {
         volume->cd(command[0].substr(2));
@@ -58,35 +62,38 @@ void try_cd(Volume *volume, vector<string> command) {
     }
 }
 
-
+// while-loop for the command line
 void run(Volume *volume) {
-    volume->print_base_in4();
+    volume->print_base_in4(); // Print the volume information
     printf("\nEnter '?' or 'help' to view the supported commands\n");
     while (true) {
         // printf("\n%s", Utf16toUtf8(volume->cwd()).c_str());
-        wprintf(L"%ls", (volume->pwd()).c_str());
+        wprintf(L"%ls", (volume->pwd()).c_str()); // Print the current working directory
         printf(" >> ");
 
         char buffer[256];
-        fgets(buffer, 256, stdin);
+        fgets(buffer, 256, stdin); // takes in command
         // string line(l);
         vector<string> command = splitString(string(buffer), " \n", false, false);
 
+        // command for change directory
         if (command[0] == "cd" || command[0] == "cd.." || command[0] == "cd." || command[0] == "cd\\")
             try_cd(volume, command);
 
+        // get the current working directory
         else if (command[0] == "pwd") {
             volume->Volume::pwd();
             wprintf(L"%ls\n", (volume->pwd()).c_str());
         }
         // printf("%s\n", Utf16toUtf8(volume->cwd()).c_str());
 
+        // list the directory contents
         else if (command[0] == "ls" || command[0] == "dir") {
             command.push_back("");
             vector<string> tmp = splitString(command[1], " ");
             bool hidden = false, system = false;
-            for (auto &i : tmp) {
-                if (i == "-a" || i == "--all")
+            for (auto &i : tmp) { // additional options for printing limited files
+                if (i == "-a" || i == "--all") 
                     hidden = system = true;
                 else if (i == "-s" || i == "--system")
                     system = true;
@@ -95,11 +102,12 @@ void run(Volume *volume) {
             }
             volume->ls(hidden, system);
         }
+        // print the directory tree
         else if (command[0] == "tree") {
             command.push_back("");
             vector<string> tmp = splitString(command[1], " ");
             bool hidden = false, system = false;
-            for (auto &i : tmp) {
+            for (auto &i : tmp) { // additional options for printing limited files
                 if (i == "-a" || i == "--all")
                     hidden = system = true;
                 else if (i == "-s" || i == "--system")
@@ -109,47 +117,50 @@ void run(Volume *volume) {
             }
             volume->tree(hidden, system);
         }
-        else if (command[0] == "read")
+        else if (command[0] == "read") // read the file
             try_read(volume, command);
 
-        else if (command[0] == "cls" || command[0] == "clear")
+        else if (command[0] == "cls" || command[0] == "clear") // clear the terminal screen
             system("cls");
-        else if (command[0] == "-h" || command[0] == "--help" || command[0] == "help" || command[0] == "?")
+        // print the supported commands
+        else if (command[0] == "-h" || command[0] == "--help" || command[0] == "help" || command[0] == "?") 
             print_help();
-        else if (command[0] == "exit" || command[0] == "quit") {
-            printf("Goodbye\n");
-            return; //todo add prompt
-        }
-        else if (command[0] == "info")
+        else if (command[0] == "info") // print the volume information
             volume->print_base_in4();
-        else
+        
+        else if (command[0] == "exit" || command[0] == "quit") { // exit the program
+            printf("Goodbye\n");
+            return;
+        }
+        else // Unrecognized command
             fprintf(stderr, "Error: Unknown command\n");
         
         printf("\n");
     }
 }
+// Loop through all the drives and return the drive letter and format
 vector<vector<string>> getDrive() {
     vector<vector<string>> drives;
     string format, buffer;
-    for (char c = 'A'; c <= 'Z'; c++) {
+    for (char c = 'A'; c <= 'Z'; c++) { // Loop from A to Z
         string disk = "\\\\.\\" + string(1, c) + ":";
-        FILE *f = fopen(disk.c_str(), "rb");
+        FILE *f = fopen(disk.c_str(), "rb"); // try to open once
         if (f) {
             format.resize(8);
 
             buffer.resize(3);
-            fread(&buffer[0], 1, 3, f);
-            fread(&format[0], 1, 8, f);
-            if (format == "NTFS    ") {
+            fread(&buffer[0], 1, 3, f); // Skip the first 3 bytes
+            fread(&format[0], 1, 8, f); // Read the format
+            if (format == "NTFS    ") { // Check if the format is NTFS
                 drives.push_back({string(1, c), format});
                 fclose(f);
                 continue;
             }
 
             buffer.resize(0x52 - 0xB);
-            fread(&buffer[0], 1, 0x52 - 0xB, f);
-            fread(&format[0], 1, 8, f);
-            if (format == "FAT32   ") {
+            fread(&buffer[0], 1, 0x52 - 0xB, f); // Skip the next 0x52 - 0xB bytes
+            fread(&format[0], 1, 8, f); // Read the format again
+            if (format == "FAT32   ") { // Check if the format is FAT32
                 drives.push_back({string(1, c), format});
                 fclose(f);
                 continue;
@@ -164,20 +175,14 @@ vector<vector<string>> getDrive() {
 vector<string> chooseDisk() {
     vector<vector<string>> drives = getDrive();
 
-    // DWORD drivesBitMask = GetLogicalDrives();
-    // vector<char> drives;
-    // for (int i = 0; i < 26; ++i)  // Assume there are at most 26 drive letters
-    //     if (drivesBitMask & (1 << i))
-    //         drives.push_back('A' + i);
-
-    printf("Available drives:\n");
+    printf("Available drives:\n"); // print the available drives
     int i = 0;
     for (auto drive : drives)
         printf("%d.  %s:\\ -- %s\n", ++i, drive[0].c_str(), drive[1].c_str());
 
     int num;
     char nextChar;
-    do {
+    do { // let the user choose the drive by inputting number
         printf("\nEnter an integer between 1 and %d: ", drives.size());
         if (scanf("%d", &num) != 1 || num < 1 || num > drives.size()) {
             // Clear the input buffer
@@ -191,7 +196,7 @@ vector<string> chooseDisk() {
     while ((nextChar = getchar()) != '\n' && nextChar != EOF) {}
 
     vector<string> rs = drives[num - 1];
-    printf("You have chosen drive %s\n", rs[0].c_str());
+    printf("You have chosen drive %s\n", rs[0].c_str()); // Announce the chosen drive
     // Sleep(500);
     return rs;
 }

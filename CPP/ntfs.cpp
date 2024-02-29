@@ -1,4 +1,4 @@
-#include "ntfs.h"
+#include "NTFS.h"
 
 // MFT Header
 MFT_Header::MFT_Header(vector<BYTE> &data) {
@@ -11,29 +11,33 @@ MFT_Header::MFT_Header(vector<BYTE> &data) {
     data_offset = file_name_offset + file_name_size;
     data_size = cal(data, 0x104, 0x108);
 
+    //? Get the total number of sectors
     num_sector = (cal(data, 0x118, 0x120) + 1) * 8;
 }
 
 
 // MFT Entry
 MFT_Entry::MFT_Entry(vector<BYTE> &data) {
+    // Mark the MFT number
     mft_record_number = cal(data, 0x2C, 0x30);
 
+    // Get the flag of this MFT (Directory, File, Deleted)
     flag = cal(data, 0x16, 0x18);
     if (flag & 0x0)
         throw "Error: Deleted record";
     if (flag == 0x2)
         attribute.push_back("DIRECTORY");
 
+    // Locate the STANDARD INFORMATION
     standard_i4_start = cal(data, 0x14, 0x16);
     standard_i4_size = cal(data, standard_i4_start + 0x4, standard_i4_start + 0x8);
-    //todo Some standard information here
+    // Get some standard information 
     extract_standard_i4(data, standard_i4_start);
 
     uint64_t start = standard_i4_start + standard_i4_size;
     file_name_start = start; //? After the STANDARD INFORMATION
     file_name_size = cal(data, file_name_start + 0x4, file_name_start + 0x8);
-    //todo FILE NAME information
+    // Get FILE NAME information
     extract_file_name(data, file_name_start);
 
     start = file_name_start + file_name_size;
@@ -54,6 +58,7 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     sub_files_number.resize(0); // Initialize the child list
 }
 
+// Convert the permission bit string into readable attributes
 vector<string> MFT_Entry::convert2attribute(uint64_t flags) {
     vector<string> attributes;
     if (flags & 0x1) attributes.push_back("READ ONLY");
@@ -78,12 +83,14 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
     if (type_id != 0x10)
         throw "Error: Invalid STANDARD INFORMATION attribute";
 
+    // Starting position
     uint64_t offset = data[start + 20];
     uint64_t beginIS = start + offset;
 
     created_time = cal(data, beginIS, beginIS);
     last_modified_time = cal(data, beginIS + 0x8, beginIS + 0x10);
 
+    // Get the DOS file permission
     uint64_t flag = cal(data, beginIS + 0x20, beginIS + 0x24);
     attribute = convert2attribute(flag);
 }
@@ -115,6 +122,12 @@ void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
 void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     //? Check the first 4 BYTEs to be 0x30
     uint64_t type_id = cal(data, start, start + 4);
+
+    if (type_id == 0x20) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
     if (type_id != 0x30)
         throw "Error: Invalid FILE NAME attribute";
 
@@ -123,7 +136,9 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
 
     uint64_t beginFN = start + offset;
 
+    // Save its parent MFT record number
     parent_mft_record_number = cal(data, beginFN, beginFN + 0x6);
+    // Get the attributes
     uint64_t fl = cal(data, 0x38, 0x3C);
     vector<string> tmp_attr = convert2attribute(fl);
     for (auto x : tmp_attr) {
@@ -137,6 +152,7 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
             attribute.push_back(x);
     }
 
+    // Get the file namespace
     uint32_t name_space = data[beginFN + 0x41];
     if (name_space == 0x0)
         file_namespace = "POSIX";
@@ -149,45 +165,62 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     else
         file_namespace = "Unknown";
 
+    // The filename length
     uint8_t name_length = data[beginFN + 0x40];
 
+    // Read the filename (Unicode)
     vector<BYTE> name(name_length * 2);
     for (int i = 0; i < name_length * 2; ++i)
         name[i] = data[beginFN + 0x42 + i];
     file_name = fromUnicode(name);
 }
+
+void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
+    //? Check for the Object ID (0x40)
+    uint64_t type_id = cal(data, start, start + 0x4);
+    if (type_id == 0x40) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
+    if (type_id == 0x80) //? Data attribute
+        extract_data(data, start);
+    else if (type_id == 0x90) { //? No data attribute => A directory
+        resident = true;
+        // num_cluster = start_cluster = 0;
+        real_size = 0;
+        attribute.push_back("DIRECTORY");
+    }
+}
 void MFT_Entry::extract_data(vector<BYTE> &data, uint64_t start) {
+    // Check if the data is resident
     resident = (data[start + 0x8] == 0x00);
     if (resident) {
         real_size = cal(data, start + 0x10, start + 0x14);
+
+        // Locate the content
         uint64_t offset = cal(data, start + 0x14, start + 0x16);
         uint64_t beginFN = start + offset;
 
+        // Save the content
         content.resize(real_size);
         for (int i = 0; i < real_size; ++i)
             content[i] = data[beginFN + i];
 
-        // num_cluster = start_cluster = 0; // Resident
     }
-    // else { // Non-resident, no name
-    //     BYTE datarun_header = data[start + 0x40];
-    //     BYTE length = datarun_header & 0xF; // 4 low bits
-    //     BYTE offset = datarun_header >> 4; // 4 high bits
-
-    //     real_size = cal(data, start + 0x30, start + 0x38);
-    //     num_cluster = cal(data, start + 0x41, start + 0x41 + length);
-    //     start_cluster = cal(data, start + 0x41 + length, start + 0x41 + length + offset);
-    // }
     else {
         real_size = cal(data, start + 0x30, start + 0x38);
 
+        // Mark the datarun
         start += 0x40;
         while (data[start] != 0x00) {
             BYTE datarun_header = data[start];
             BYTE length = datarun_header & 0xF; // 4 low bits
             BYTE offset = datarun_header >> 4; // 4 high bits
 
+            // get the number of clusters of each datarun
             num_cluster.push_back(cal(data, start + 0x1, start + 0x1 + length));
+            // get the starting cluster of each datarun
             start_cluster.push_back(cal(data, start + 0x1 + length, start + 0x1 + length + offset));
             start += 1 + length + offset;
         }
@@ -222,6 +255,7 @@ bool MFT_Entry::is_system() {
 
 // NTFS
 NTFS::NTFS(string name) {
+    // Open the volume
     disk_name = name + ":";
     name = "\\\\.\\" + disk_name;
     volume = fopen(name.c_str(), "rb");
@@ -230,6 +264,8 @@ NTFS::NTFS(string name) {
         fprintf(stderr, "Error: Permission denied\n");
         exit(1);
     }
+
+    // Read the VBR
     vbr.resize(512);
     size_t bytesRead = fread(vbr.data(), 1, 512, volume);
     if (bytesRead != 512) {
@@ -243,43 +279,46 @@ NTFS::NTFS(string name) {
         exit(1);
     }
 
-    //? Read MFT header
+    //? Read MFT
     vector<BYTE> mft_header(mft_record_size);
     fseeko64(volume, mft_offset, 0);
-
     bytesRead = fread(mft_header.data(), 1, mft_record_size, volume);
-
-    //? Read the mft entry
     MFT_Header mft_header_info(mft_header);
 
-    vector<BYTE> mft_entry(mft_record_size);
 
-    for (uint64_t i = 2; i < mft_header_info.num_sector; i += 2) {
+
+    //? Loop through the MFT to get all the MFT entries
+    vector<BYTE> mft_entry(mft_record_size);
+    int step = mft_record_size / bytes_per_sector;
+
+    for (uint64_t i = 2; i < mft_header_info.num_sector; i += step) {
         bytesRead = fread(mft_entry.data(), 1, mft_record_size, volume);
 
         string mark = "    ";
         for (int j = 0; j < 4; ++j)
             mark[j] = mft_entry[j];
-        if (mark != "FILE") continue;
+        if (mark != "FILE") continue; //? Skip the anomal record
 
         try {
             MFT_Entry mft_entry_info(mft_entry);
-            //! Sector
+            // Mark this MFT saving sector
             uint64_t num_sector = (i / 2 * mft_record_size + mft_offset) / bytes_per_sector + reserved_sectors;
             mft_entry_info.sector_list.push_back(num_sector);
 
+            // Save into the list of MFT entries
             mft_entries[mft_entry_info.mft_record_number] = mft_entry_info;
         }
         catch (const char *msg) {
             continue;
         }
     }
-    child_linker();
+    child_linker(); //? Link child to its parent
 }
 NTFS::~NTFS() {
-    fclose(volume);
+    fclose(volume); //? Close the volume when exit
 }
 
+// Check whether is it NTFS or not
 bool NTFS::is_NTFS() {
     if (oem_id == "NTFS    ")
         return true;
@@ -287,30 +326,32 @@ bool NTFS::is_NTFS() {
 }
 void NTFS::extract_vbr() {
     oem_id.resize(8);
-    for (int i = 3; i < 0xB; i++)
+    for (int i = 3; i < 0xB; i++)                   // Get the OEM ID (NTFS)
         oem_id[i - 3] = vbr[i];
 
-    bytes_per_sector = cal(vbr, 0xB, 0xD);
-    sectors_per_cluster = vbr[0xD];
-    reserved_sectors = cal(vbr, 0xE, 0x10);
-    total_sectors = cal(vbr, 0x28, 0x30);
-    mft_cluster_number = cal(vbr, 0x30, 0x38);
-    mft_mirror_cluster_number = cal(vbr, 0x38, 0x40);
+    bytes_per_sector = cal(vbr, 0xB, 0xD);          // Byte per sector
+    sectors_per_cluster = vbr[0xD];                 // Sectors per cluster
+    reserved_sectors = cal(vbr, 0xE, 0x10);         // Reserved sectors
+    total_sectors = cal(vbr, 0x28, 0x30);           // Total sectors
+    mft_cluster_number = cal(vbr, 0x30, 0x38);      // First cluster of $MFT
+    mft_mirror_cluster_number = cal(vbr, 0x38, 0x40); // First cluster of $MFTMirr
 
-    // Signed
+    // Signed number, get the record size
     uint64_t recordsize = vbr[0x40];
     if (recordsize > 127) recordsize = 256 - recordsize;
     mft_record_size = 1 << recordsize;
 
 
-    serial_number = cal(vbr, 0x48, 0x50);
+    serial_number = cal(vbr, 0x48, 0x50);          // Serial number
 
+    // Calculate the the offset of the first MFT record
     mft_offset = mft_cluster_number * sectors_per_cluster * bytes_per_sector;
 }
 void NTFS::child_linker() {
     //? Add child mft record number to its parent
     for (auto it = mft_entries.begin(); it != mft_entries.end(); ++it) {
         uint64_t parent = it->second.parent_mft_record_number;
+        // Put the child id inside its parent
         if (mft_entries.count(parent))
             mft_entries[parent].sub_files_number.push_back(it->first);
     }
@@ -321,7 +362,7 @@ void NTFS::child_linker() {
             root = it->second.mft_record_number;
             break;
         }
-    current_node.push_back(root);
+    current_node.push_back(root); // Assign the current directory flow at the root
 }
 
 void NTFS::print_vbr() {
@@ -331,6 +372,7 @@ void NTFS::print_vbr() {
             printf("\n");
     }
 }
+// Print out the basic information
 void NTFS::print_base_in4() {
     Volume::print_base_in4();
     printf("\n");
@@ -344,7 +386,7 @@ void NTFS::print_base_in4() {
     printf("First cluster of $MFTMirr:  %u\n", mft_mirror_cluster_number);
     printf("MFT record size:            %d B\n", mft_record_size);
 }
-
+// Find the child MFT record by searching its name
 uint64_t NTFS::find_mft_entry(const string &record_name) {
     uint64_t des = 0;
     for (auto x : mft_entries[current_node.back()].sub_files_number)
@@ -355,43 +397,42 @@ uint64_t NTFS::find_mft_entry(const string &record_name) {
     return des;
 }
 
-//! And here
+// Read the content of the record by giving the path
 void NTFS::read(const string &name) {
     string tmp_path = name;
-    if (tmp_path[0] == '\"' && tmp_path[tmp_path.size() - 1] == '\"')
+    if (tmp_path[0] == '\"' && tmp_path[tmp_path.size() - 1] == '\"') // Remove the quote
         tmp_path = tmp_path.substr(1, tmp_path.size() - 2);
 
-    uint64_t des = find_mft_entry(tmp_path);
+    uint64_t des = find_mft_entry(tmp_path); // Find the child MFT record
     if (tmp_path == "")
-        des = current_node.back();
+        des = current_node.back(); // If no path is given, read the current directory
 
     vector<string> tmp_split = splitString(tmp_path, " ");
-    if (tmp_split[0] == "-i" || tmp_split[0] == "--index") {
-        if (tmp_split.size() < 2) {
-            // fprintf(stderr, "Error: No index specified\n");
+    if (tmp_split[0] == "-i" || tmp_split[0] == "--index") { // Choose path by using index
+        if (tmp_split.size() < 2) { // No index specified
             throw "Error: No index specified\n";
             return;
         }
-        if (!isNumber(tmp_split[1])) {
+        if (!isNumber(tmp_split[1])) { // Invalid index
             throw "Error: Invalid index\n";
             return;
         }
-        uint64_t index = stoull(tmp_split[1]);
+        uint64_t index = stoull(tmp_split[1]); // Convert the index to number
         for (auto &x : mft_entries[current_node.back()].sub_files_number)
             if (mft_entries[x].mft_record_number == index) {
                 des = x;
                 break;
             }
     }
-    if (des == 0)
+    if (des == 0) // No child found
         throw "File not found";
 
     MFT_Entry mft = mft_entries[des];
 
-    mft.info();
+    mft.info(); // Print the information of the file
     printf("\n------------CONTENT------------\n");
 
-    if (mft.is_directory()) {
+    if (mft.is_directory()) { // if directory, print its sub-files tree
         // change_dir(name);
         current_node.push_back(des);
         tree(false, false);
@@ -399,13 +440,8 @@ void NTFS::read(const string &name) {
         current_node.pop_back();
         return;
     }
-    if (mft.resident) {
-        for (auto &x : mft.content)
-            printf("%c", x);
-        printf("\n");
-        return;
-    }
 
+    // Check the file extension to be .txt
     wstring ext = mft.file_name;
     if (mft.file_name.size() > 4)
         ext = mft.file_name.substr(mft.file_name.size() - 4);
@@ -414,13 +450,25 @@ void NTFS::read(const string &name) {
         printf("Please use the appropriate reader to read this file.\n");
         return;
     }
+
+    if (mft.resident) { // If resident, print its content
+        for (auto &x : mft.content)
+            printf("%c", x);
+        printf("\n");
+        return;
+    }
+
+    // Non-resident file
     for (int i = 0; i < mft.num_cluster.size(); i++) {
+        // Locate the datarun
         uint64_t size = mft.num_cluster[i] * bytes_per_sector * sectors_per_cluster;
         uint64_t offset = mft.start_cluster[i] * bytes_per_sector * sectors_per_cluster;
         vector<BYTE> data(size);
         fseeko64(volume, offset, 0);
+        // read each data run into the buffer
         size_t bytesRead = fread(data.data(), 1, size, volume);
 
+        // print out the content read from the datarun
         for (auto &x : data)
             printf("%c", x);
     }
@@ -429,32 +477,31 @@ void NTFS::read(const string &name) {
 }
 
 bool NTFS::change_dir(string path) {
-    if (path == "\\") {
+    if (path == "\\") { // cd\, go back to the root
         current_node.resize(1);
         return true;
     }
     vector<string> paths = splitString(path, " ", 0);
-    if (paths[0] == "-i" || paths[0] == "--index") {
-        if (paths.size() < 2) {
-            // fprintf(stderr, "Error: No index specified\n");
+    if (paths[0] == "-i" || paths[0] == "--index") { // change the current directory by index
+        if (paths.size() < 2) { // No index specified
             throw "Error: No index specified\n";
             return false;
         }
-        if (!isNumber(paths[1])) {
+        if (!isNumber(paths[1])) { // Invalid index
             throw "Error: Invalid index\n";
             return false;
         }
-        uint64_t index = stoull(paths[1]);
+        uint64_t index = stoull(paths[1]); // Convert the index to number and move to that child directory
         for (auto &x : mft_entries[current_node.back()].sub_files_number)
             if (mft_entries[x].mft_record_number == index && mft_entries[x].is_directory()) {
                 current_node.push_back(x);
                 return true;
             }
-        throw "Error: No such directory found\n";
+        throw "Error: No such directory found\n"; // No child found
         return false;
     }
 
-    paths = splitString(path);
+    paths = splitString(path); // Split the path by '\'
     vector<uint64_t> temp = current_node; // Backup the current node
 
     if (paths[0] == disk_name) { // Absolute path
@@ -463,16 +510,17 @@ bool NTFS::change_dir(string path) {
     }
 
     for (auto &x : paths) {
-        if (x == "..") {
+        if (x == "..") { // back to the parent directory
             if (current_node.size() > 1)
                 current_node.pop_back();
         }
 
-        else if (x == ".")
+        else if (x == ".") // do nothing (stay at the current directory)
             continue;
+
         else {
             uint64_t des = find_mft_entry(x);
-            if (des == 0 || !mft_entries[des].is_directory())
+            if (des == 0 || !mft_entries[des].is_directory()) // Only allow to move the directory 
             {
                 current_node = temp;
                 throw "Error: No such directory found\n";
@@ -483,13 +531,13 @@ bool NTFS::change_dir(string path) {
     }
     return true;
 }
-wstring NTFS::get_current_path() {
+wstring NTFS::get_current_path() { // Get the current directory flow
     wstring path;
     path += wstring(disk_name.begin(), disk_name.end());
 
     if (current_node.size() == 1)
         return path += L"\\";
-    for (int i = 1; i < current_node.size(); i++) {
+    for (int i = 1; i < current_node.size(); i++) { // join the path by '\'
         path += L"\\";
         path += mft_entries[current_node[i]].file_name;
     }
@@ -498,6 +546,7 @@ wstring NTFS::get_current_path() {
 
 
 // directory-archive-readonly-hidden-system-reparse point
+// Convert the attribute to a bit string
 string attribute_bit(vector<string> &attribute) {
     string attr = "------";
     for (auto &x : attribute) {
@@ -510,6 +559,7 @@ string attribute_bit(vector<string> &attribute) {
     }
     return attr;
 }
+// List all the files in the current directory
 void NTFS::list(bool hidden, bool system) {
     uint64_t node = current_node.back();
 
@@ -517,51 +567,53 @@ void NTFS::list(bool hidden, bool system) {
     for (auto &x : mft_entries[node].sub_files_number) {
         // if (!print_hidden && mft_entries[x].is_hidden_system())
             // continue;
-        if (!hidden && mft_entries[x].is_hidden())
+        if (!hidden && mft_entries[x].is_hidden()) // Skip the hidden file if not called
             continue;
-        if (!system && mft_entries[x].is_system())
+        if (!system && mft_entries[x].is_system()) // Skip the system file if not called
             continue;
-        string attr = attribute_bit(mft_entries[x].attribute);
+        string attr = attribute_bit(mft_entries[x].attribute); // print the attribute list
         printf("%s\t", attr.c_str());
-        uint64_t id = mft_entries[x].mft_record_number;
+        uint64_t id = mft_entries[x].mft_record_number; // print the MFT record number for index purpose
         printf("%llu\t", id);
 
-        wstring name = mft_entries[x].file_name;
+        wstring name = mft_entries[x].file_name; // print the file name
         wprintf(L"%ls\n", name.c_str());
         // printf("%s\n", Utf16toUtf8(name).c_str());
     }
 }
+// print the tree of the current directory
 void NTFS::print_tree(bool hidden, bool system, uint64_t entry, string prefix, bool last) {
     if (entry == 0) entry = current_node.back();
     MFT_Entry mft = mft_entries[entry];
 
 
-    wprintf(L"%ls\n", mft.file_name.c_str());
+    wprintf(L"%ls\n", mft.file_name.c_str()); // print the current mft name
     // printf("%s\n", Utf16toUtf8(mft.file_name).c_str());
     if (mft.is_archive())
         return;
 
 
-    int lst = mft.sub_files_number.size() - 1;
-    while (lst >= 0 && ((!hidden && mft_entries[mft.sub_files_number[lst]].is_hidden()) 
-                    || (!system && mft_entries[mft.sub_files_number[lst]].is_system())))
-        lst--; //? Bỏ qua các file ẩn hay hệ thống
+    // handle printing the folder and its sub-files
+    int lst = mft.sub_files_number.size() - 1; // Find the last file to be printed
+    while (lst >= 0 && ((!hidden && mft_entries[mft.sub_files_number[lst]].is_hidden())
+        || (!system && mft_entries[mft.sub_files_number[lst]].is_system()))) // Skip the hidden and system file if not called
+        lst--;
     for (int i = 0; i < mft.sub_files_number.size(); i++) {
-        if (mft_entries[mft.sub_files_number[i]].is_hidden() && !hidden)
+        if (mft_entries[mft.sub_files_number[i]].is_hidden() && !hidden) // Skip the hidden file if not called
             continue;
-        if (mft_entries[mft.sub_files_number[i]].is_system() && !system)
+        if (mft_entries[mft.sub_files_number[i]].is_system() && !system) // Skip the system file if not called
             continue;
 
-        printf("%s", (prefix + "+---").c_str());
+        printf("%s", (prefix + "+---").c_str()); // print the prefix before the file name
         if (i != lst) {
             // printf("%s", (prefix + char(195) + char(196)).c_str());
-            // print_tree(mft.sub_files_number[i], prefix + char(179) + " ", false);
-            print_tree(hidden, system, mft.sub_files_number[i], prefix + "|   ", false);
+            // print_tree(hidden, system, mft.sub_files_number[i], prefix + char(179) + " ", false);
+            print_tree(hidden, system, mft.sub_files_number[i], prefix + "|   ", false); // print the sub-files but not the last
         }
         else {
             // printf("%s", (prefix + char(192) + char(196)).c_str());
-            // print_tree(mft.sub_files_number[i], prefix + "  ", true);
-            print_tree(hidden, system, mft.sub_files_number[i], prefix + "    ", true);
+            // print_tree(hidden, system, mft.sub_files_number[i], prefix + "  ", true);
+            print_tree(hidden, system, mft.sub_files_number[i], prefix + "    ", true); // print the last child file
         }
     }
 }
@@ -570,19 +622,22 @@ void NTFS::print_tree(bool hidden, bool system, uint64_t entry, string prefix, b
 void MFT_Entry::info(const string &path) {
     // Volume::read();
     printf("--------------Info-------------\n");
+
+    // Print out the name and it filename namespace
     wprintf(L"Name: %ls\n", file_name.c_str());
     printf("Filename namespace: %s\n", file_namespace.c_str());
 
+    // Print the attribute bit string
     printf("Attribute: ");
     for (string &s : attribute)
         printf("%s    ", s.c_str());
     printf("\n");
 
-    printf("Size: %u B\n", real_size);
+    printf("Size: %u B\n", real_size); // print the size
 
-    printf("Sector of this $MFT record: %u\n", sector_list[0]);
+    printf("Sector of this $MFT record: %u\n", sector_list[0]); // print the $MFT record storing sector
 
-    if (!resident) {
+    if (!resident) { // Print the list of dataruns follow: start cluster and number of clusters
         printf("-------------------------------\n");
         printf("            |         Start |   Number of    \n");
         printf("            |       Cluster |   Clusters     \n");
@@ -596,20 +651,19 @@ void MFT_Entry::info(const string &path) {
 }
 
 // Support functions
+// Calculate the value of a BYTE array following Little Endian format
 uint64_t cal(vector<BYTE> &bytes, int start, int end) {
     uint64_t sum = 0;
     int shift = 0;
-    for (int i = start; i < end; i++) {
+    for (int i = start; i < end; i++) { // Add up and shift the BYTEs
         sum |= (static_cast<uint64_t>(bytes[i]) << shift);
-        shift += 8;
+        shift += 8; // Increase the shift value
     }
     return sum;
 }
-wstring fromUnicode(vector<BYTE> &BYTEs) {
-    // Cast BYTEs to wchar_t* (UTF-16)
+wstring fromUnicode(vector<BYTE> &BYTEs) { // Convert unicode character to wstring
     const wchar_t *wcharData = reinterpret_cast<const wchar_t *>(BYTEs.data());
 
-    // Construct wstring from wchar_t* data
     return wstring(wcharData, BYTEs.size() / sizeof(wchar_t));
 }
 
