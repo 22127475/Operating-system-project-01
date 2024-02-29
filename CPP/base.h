@@ -16,7 +16,7 @@ using namespace std;
 using BYTE = unsigned char;
 constexpr int VBR_SIZE = 512;
 
-class Volume {
+class Volume { // Base class for both FAT and NTFS
 public:
     virtual void print_base_in4() {
         printf("The base information of the volume:\n");
