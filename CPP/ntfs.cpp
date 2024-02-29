@@ -89,6 +89,12 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
 void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     //? Check the first 4 BYTEs to be 0x30
     uint64_t type_id = cal(data, start, start + 4);
+
+    if (type_id == 0x20) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
     if (type_id != 0x30)
         throw "Error: Invalid FILE NAME attribute";
 
@@ -141,6 +147,18 @@ void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
     //? Check for the Object ID (0x40)
     uint64_t type_id = cal(data, start, start + 0x4);
     if (type_id == 0x40) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
+    //? Check for the Volume Name (0x60)
+    if (type_id == 0x60) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
+    //? Check for the Volume Information (0x70)
+    if (type_id == 0x70) {
         uint64_t step = cal(data, start + 0x4, start + 0x8);
         start += step;
         type_id = cal(data, start, start + 0x4); // calculate again
@@ -315,7 +333,7 @@ void NTFS::child_linker() {
         uint64_t parent = it->second.parent_mft_record_number;
         // Put the child id inside its parent
         if (mft_entries.count(parent))
-            mft_entries[parent].sub_files_number.push_back(it->first); 
+            mft_entries[parent].sub_files_number.push_back(it->first);
     }
 
     //? Find the root 
@@ -429,7 +447,7 @@ void NTFS::read(const string &name) {
         fseeko64(volume, offset, 0);
         // read each data run into the buffer
         size_t bytesRead = fread(data.data(), 1, size, volume);
-        
+
         // print out the content read from the datarun
         for (auto &x : data)
             printf("%c", x);
@@ -497,7 +515,7 @@ wstring NTFS::get_current_path() { // Get the current directory flow
     wstring path;
     path += wstring(disk_name.begin(), disk_name.end());
 
-    if (current_node.size() == 1) 
+    if (current_node.size() == 1)
         return path += L"\\";
     for (int i = 1; i < current_node.size(); i++) { // join the path by '\'
         path += L"\\";
@@ -557,9 +575,9 @@ void NTFS::print_tree(bool hidden, bool system, uint64_t entry, string prefix, b
 
     // handle printing the folder and its sub-files
     int lst = mft.sub_files_number.size() - 1; // Find the last file to be printed
-    while (lst >= 0 && ((!hidden && mft_entries[mft.sub_files_number[lst]].is_hidden()) 
+    while (lst >= 0 && ((!hidden && mft_entries[mft.sub_files_number[lst]].is_hidden())
         || (!system && mft_entries[mft.sub_files_number[lst]].is_system()))) // Skip the hidden and system file if not called
-        lst--; 
+        lst--;
     for (int i = 0; i < mft.sub_files_number.size(); i++) {
         if (mft_entries[mft.sub_files_number[i]].is_hidden() && !hidden) // Skip the hidden file if not called
             continue;
