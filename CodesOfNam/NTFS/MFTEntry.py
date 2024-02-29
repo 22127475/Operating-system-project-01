@@ -126,7 +126,13 @@ class MFTEntry:
                                 
                                 f.read(1)
                                 f.seek(offsetToFirstCluster * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector, 0)
-                                Content_rawData += f.read(clusterCount* self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector)
+                                
+                                attemptReadContent = 1
+                                while (clusterCount * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector >= attemptReadContent * 500000000):
+                                    Content_rawData += f.read(500000000)
+                                    attemptReadContent += 1
+                                temp = int(clusterCount* self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector - (attemptReadContent - 1) * 500000000)
+                                Content_rawData += f.read(temp)
                                 
                             self.fileContent = Content_rawData
                     except Exception as e:

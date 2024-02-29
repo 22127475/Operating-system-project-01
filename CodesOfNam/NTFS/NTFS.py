@@ -72,11 +72,15 @@ class NTFS:
                 f.seek(self.volumeBootRecord.BPB.MFTStartingCluster * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector, 0)
                 MFT_rawData = f.read(MFT_numCLusters * self.volumeBootRecord.BPB.sectorsPerCluster * self.volumeBootRecord.BPB.bytesPerSector)
 
+                k = 0
                 #? Read all entries in MFT by getting each (MFTEntrysize) bytes
                 for i in range (0, len(MFT_rawData), self.volumeBootRecord.BPB.MFTEntrySize):
                     if (MFT_rawData[i: i + 4] == b"FILE"):
+                        print(k + 1)
+                        k += 1
                         self.MFT.append(MFTEntry(MFT_rawData[i: (i + self.volumeBootRecord.BPB.MFTEntrySize)], self.volumeName, self.path, self.volumeBootRecord))
-                        
+                        print(self.MFT[-1].fileName)
+
                 #! Build root directory
                 self.rootDirectory = RootDirectory(self.MFT)
                 

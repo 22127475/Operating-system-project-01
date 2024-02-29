@@ -30,15 +30,26 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     //todo Some standard information here
     extract_standard_i4(data, standard_i4_start);
 
-    file_name_start = standard_i4_start + standard_i4_size; //? After the STANDARD INFORMATION
+    uint64_t start = standard_i4_start + standard_i4_size;
+    file_name_start = start; //? After the STANDARD INFORMATION
     file_name_size = cal(data, file_name_start + 0x4, file_name_start + 0x8);
     //todo FILE NAME information
     extract_file_name(data, file_name_start);
 
-    data_start = file_name_start + file_name_size; //? After the FILE NAME
-    data_size = cal(data, data_start + 0x4, data_start + 0x8);
+    start = file_name_start + file_name_size;
+    uint64_t type_id = cal(data, start, start + 0x4);
+    while (type_id == 0x30)
+    {   
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        step = step % 1024;
+        extract_file_name(data, start);
+        start += step;
+        type_id = cal(data, start, start + 0x4);
+    }
+
+    data_size = cal(data, start + 0x4, start + 0x8);
     //todo DATA information
-    checkdata(data, data_start); // + extract data
+    checkdata(data, start); // + extract data
 
     sub_files_number.resize(0); // Initialize the child list
 }
@@ -77,12 +88,35 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
     attribute = convert2attribute(flag);
 }
 
+void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
+    //? Check for the Object ID (0x40)
+    uint64_t type_id = cal(data, start, start + 0x4);
+    // if (type_id == 0x30) {
+    //     uint64_t step = cal(data, start + 0x4, start + 0x8);
+    //     extract_file_name(data, start);
+    //     start += step;
+    //     type_id = cal(data, start, start + 0x4); // calculate again
+    // }
+    if (type_id == 0x40) {
+        uint64_t step = cal(data, start + 0x4, start + 0x8);
+        start += step;
+        type_id = cal(data, start, start + 0x4); // calculate again
+    }
+    if (type_id == 0x80) //? Data attribute
+        extract_data(data, start);
+    else if (type_id == 0x90) { //? No data attribute => A directory
+        resident = true;
+        // num_cluster = start_cluster = 0;
+        real_size = 0;
+        attribute.push_back("DIRECTORY");
+    }
+}
+
 void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     //? Check the first 4 BYTEs to be 0x30
     uint64_t type_id = cal(data, start, start + 4);
     if (type_id != 0x30)
         throw "Error: Invalid FILE NAME attribute";
-
 
     uint64_t data_size = cal(data, start + 0x10, start + 0x14);
     uint64_t offset = cal(data, start + 0x14, start + 0x16);
@@ -121,24 +155,6 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     for (int i = 0; i < name_length * 2; ++i)
         name[i] = data[beginFN + 0x42 + i];
     file_name = fromUnicode(name);
-}
-
-void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
-    //? Check for the Object ID (0x40)
-    uint64_t type_id = cal(data, start, start + 0x4);
-    if (type_id == 0x40) {
-        uint64_t step = cal(data, start + 0x4, start + 0x8);
-        start += step;
-        type_id = cal(data, start, start + 0x4); // calculate again
-    }
-    if (type_id == 0x80) //? Data attribute
-        extract_data(data, start);
-    else if (type_id == 0x90) { //? No data attribute => A directory
-        resident = true;
-        // num_cluster = start_cluster = 0;
-        real_size = 0;
-        attribute.push_back("DIRECTORY");
-    }
 }
 void MFT_Entry::extract_data(vector<BYTE> &data, uint64_t start) {
     resident = (data[start + 0x8] == 0x00);
