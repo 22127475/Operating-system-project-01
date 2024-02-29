@@ -128,7 +128,7 @@ void run(Volume *volume) {
         else if (command[0] == "info") // print the volume information
             volume->print_base_in4();
         
-        else if (command[0] == "exit" || command[0] == "quit") { // exit the program
+        else if (command[0] == "exit" || command[0] == "quit" || command[0] == "bye") { // exit the program
             printf("Goodbye\n");
             return;
         }
