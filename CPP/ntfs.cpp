@@ -60,9 +60,19 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data, uint64_t record_size) {
     // Get DATA information
     checkdata(data, start); // + extract data
 
-    if (flag == 0x3)
-        attribute.push_back("DIRECTORY");
-        
+    if (flag == 0x3) {
+        bool has = false;
+        for (auto x : attribute) {
+            if (x == "DIRECTORY") {
+                has = true;
+                break;
+            }
+        }
+
+        if (!has)
+            attribute.push_back("DIRECTORY");
+    }
+
     sub_files_number.resize(0); // Initialize the child list
 }
 
