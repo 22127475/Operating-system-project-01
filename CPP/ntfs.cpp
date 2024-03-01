@@ -17,7 +17,9 @@ MFT_Header::MFT_Header(vector<BYTE> &data) {
 
 
 // MFT Entry
-MFT_Entry::MFT_Entry(vector<BYTE> &data) {
+MFT_Entry::MFT_Entry(vector<BYTE> &data, uint64_t record_size) {
+    // Save the record size
+    this->record_size = record_size;
     // Mark the MFT number
     mft_record_number = cal(data, 0x2C, 0x30);
 
@@ -33,26 +35,29 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data) {
     // Get some standard information 
     extract_standard_i4(data, standard_i4_start);
 
+    // Locate the FILE NAME
     uint64_t start = standard_i4_start + standard_i4_size;
-    file_name_start = start; //? After the STANDARD INFORMATION
+    file_name_start = start;
     file_name_size = cal(data, file_name_start + 0x4, file_name_start + 0x8);
     file_name_size = file_name_size % 1024;
     // Get FILE NAME information
     extract_file_name(data, file_name_start);
 
+    // There is more than one FILE NAME attribute
+    // Get the FILE NAME information again
     start = file_name_start + file_name_size;
     uint64_t type_id = cal(data, start, start + 0x4);
     while (type_id == 0x30)
     {   
         uint64_t step = cal(data, start + 0x4, start + 0x8);
-        step = step % 1024;
+        step = step % record_size;
         extract_file_name(data, start);
         start += step;
         type_id = cal(data, start, start + 0x4);
-    }
+    } 
 
     data_size = cal(data, start + 0x4, start + 0x8);
-    //todo DATA information
+    // Get DATA information
     checkdata(data, start); // + extract data
 
     if (flag == 0x3)
@@ -98,11 +103,12 @@ void MFT_Entry::extract_standard_i4(vector<BYTE> &data, uint64_t start) {
     attribute = convert2attribute(flag);
 }
 
+
 void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
     //? Check the first 4 BYTEs to be 0x30
     uint64_t type_id = cal(data, start, start + 4);
 
-    if (type_id == 0x20) {
+    if (type_id == 0x20) { // Attribute list
         uint64_t step = cal(data, start + 0x4, start + 0x8);
         step = step % 1024;
         start += step;
@@ -281,7 +287,7 @@ NTFS::NTFS(string name) {
         if (mark != "FILE") continue; //? Skip the anomal record
 
         try {
-            MFT_Entry mft_entry_info(mft_entry);
+            MFT_Entry mft_entry_info(mft_entry, mft_record_size);
             // Mark this MFT saving sector
             uint64_t num_sector = (i / 2 * mft_record_size + mft_offset) / bytes_per_sector + reserved_sectors;
             mft_entry_info.sector_list.push_back(num_sector);
@@ -532,11 +538,11 @@ string attribute_bit(vector<string> &attribute) {
     string attr = "------";
     for (auto &x : attribute) {
         if (x == "DIRECTORY") attr[0] = 'd';
-        if (x == "ARCHIVE") attr[1] = 'a';
-        if (x == "READ ONLY") attr[2] = 'r';
-        if (x == "HIDDEN") attr[3] = 'h';
-        if (x == "SYSTEM") attr[4] = 's';
-        if (x == "REPARSE POINT") attr[5] = 'l';
+        else if (x == "ARCHIVE") attr[1] = 'a';
+        else if (x == "READ ONLY") attr[2] = 'r';
+        else if (x == "HIDDEN") attr[3] = 'h';
+        else if (x == "SYSTEM") attr[4] = 's';
+        else if (x == "REPARSE POINT") attr[5] = 'l';
     }
     return attr;
 }

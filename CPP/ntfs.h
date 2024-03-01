@@ -21,6 +21,7 @@ public:
 
 class MFT_Entry {
 public:
+    uint32_t record_size;
     uint64_t mft_record_number;
     uint8_t flag;
 
@@ -62,7 +63,7 @@ private: // Considered attribute locations
 
 public:
     MFT_Entry() {}
-    MFT_Entry(vector<BYTE> &data);
+    MFT_Entry(vector<BYTE> &data, uint64_t record_size);
 
     // Standard Information commands
     vector<string> convert2attribute(uint64_t flags);
