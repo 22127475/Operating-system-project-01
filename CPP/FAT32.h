@@ -55,6 +55,7 @@ public:
 	std::string binToState(); // Convert state represent from Binary to String
 	bool isHidden(); // Check hidden
 	bool isSystem(); // Check system
+	bool isValidName();
 	bool canPrint(); // Print condition
 	void print(bool isFull = true); // Print Folder inforamtion
 	CFolder* findByID(const int &id); // Check ID of Folder and its child
@@ -62,7 +63,6 @@ public:
 	// Destructor
 	~CFolder();
 };
-
 
 class FAT_32 : public Volume
 {

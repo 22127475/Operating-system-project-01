@@ -99,17 +99,26 @@ bool CFolder::isSystem()
 }
 
 // Print condition
+
+bool CFolder::isValidName()
+{
+	for (char c : this->name)
+	{
+		if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || 
+			c == '!' || c == '#' || c == '$' || c == '&' ||
+			c == '@' || c == '\'' || c == '(' || c == ')' ||
+			c == '-' || c == '_' || c == '^' || c == '%' ||
+			c == '`' || c == '{' || c == '}' || c == '~')
+			return true;
+	}
+	return false;
+}
 bool CFolder::canPrint()
 {
 	
 	bool res = false;
-	for (int i = 0; i < this->name.size(); ++i)
-	{
-		if (name[i] >= 'A' && name[i] <= 'Z' || name[i] >= 'a' && name[i] <= 'z')
-			res = true;
-
-	}
-
+	
+	res = this->isValidName();
 	if (state[6] == '1' ||state[5] == '1' ||  state[4] == '1')
 		return false;
 
@@ -273,11 +282,11 @@ void FAT_32::printBootSector()
 	printf("FAT size (Sf): %d \n", littleEdian(bootSector.FATSize, 4));
 
 	// Secial information
-	printf("First sector of FAT table: %d \n", littleEdian(bootSector.sectorOfBootsector, 2)); // After Sb
+	printf("First sector of FAT table: %d \n", littleEdian(bootSector.sectorOfBootsector, 2)); // Sb
 	
 	printf("First sector of RDET: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
 										  littleEdian(bootSector.FATSize, 4) * 
-										  (unsigned int)bootSector.copyOfFAT);
+										  (unsigned int)bootSector.copyOfFAT); // Sb + Nf * Sf
 	printf("First cluster of RDET: %d \n", littleEdian(bootSector.clusterStartOfRDET, 4));
 	
 	printf("First sector of Data: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
@@ -285,9 +294,10 @@ void FAT_32::printBootSector()
 										  (unsigned int)bootSector.copyOfFAT); // Sb + Nf * Sf
 	
 	printf("FAT type: ");
-	//  FAT32
-	for (int i; i < 8; ++i)
+	for (int i = 0; i < 8; ++i)
+	{
 		printf("%C", bootSector.FATType[i]);
+	}
 	printf("\n");
 }
 // Covert cluster to sector
