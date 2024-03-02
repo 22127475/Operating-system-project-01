@@ -25,14 +25,13 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data, uint64_t record_size) {
 
     // Get the flag of this MFT (Directory, File, Deleted)
     flag = cal(data, 0x16, 0x18);
-    if (flag & 0x0)
+    if (flag == 0x0 || flag == 0x2)
         throw "Error: Deleted record";
-    if (flag == 0x2)
-        attribute.push_back("DIRECTORY");
 
     // Locate the STANDARD INFORMATION
     standard_i4_start = cal(data, 0x14, 0x16);
     standard_i4_size = cal(data, standard_i4_start + 0x4, standard_i4_start + 0x8);
+    standard_i4_size = standard_i4_size % 1024;
     // Get some standard information 
     extract_standard_i4(data, standard_i4_start);
 
@@ -40,6 +39,7 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data, uint64_t record_size) {
     uint64_t start = standard_i4_start + standard_i4_size;
     file_name_start = start;
     file_name_size = cal(data, file_name_start + 0x4, file_name_start + 0x8);
+    file_name_size = file_name_size % 1024;
     // Get FILE NAME information
     extract_file_name(data, file_name_start);
 
@@ -59,6 +59,19 @@ MFT_Entry::MFT_Entry(vector<BYTE> &data, uint64_t record_size) {
     data_size = cal(data, start + 0x4, start + 0x8);
     // Get DATA information
     checkdata(data, start); // + extract data
+
+    if (flag == 0x3) {
+        bool has = false;
+        for (auto x : attribute) {
+            if (x == "DIRECTORY") {
+                has = true;
+                break;
+            }
+        }
+
+        if (!has)
+            attribute.push_back("DIRECTORY");
+    }
 
     sub_files_number.resize(0); // Initialize the child list
 }
@@ -107,6 +120,7 @@ void MFT_Entry::extract_file_name(vector<BYTE> &data, uint64_t start) {
 
     if (type_id == 0x20) { // Attribute list
         uint64_t step = cal(data, start + 0x4, start + 0x8);
+        step = step % 1024;
         start += step;
         type_id = cal(data, start, start + 0x4); // calculate again
     }
@@ -162,6 +176,7 @@ void MFT_Entry::checkdata(vector<BYTE> &data, uint64_t start) {
     uint64_t type_id = cal(data, start, start + 0x4);
     if (type_id == 0x40) {
         uint64_t step = cal(data, start + 0x4, start + 0x8);
+        step = step % 1024;
         start += step;
         type_id = cal(data, start, start + 0x4); // calculate again
     }
