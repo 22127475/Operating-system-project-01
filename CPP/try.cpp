@@ -14,6 +14,71 @@ void print_team() {
 }
 // Supported commands
 void print_help() {
+    printf("HCMU$hell, version 1.0.0 \n");
+    printf("info          Print volume information\n");
+    printf("\n");
+    printf("cd            Change current directoty\n");
+    /*printf("-----Detail-----\n");
+    printf("NAME\n");
+    printf("\tChange directory\n");
+    printf("SYNTAX\n");
+    printf("\tcd [path | [-i [ID]]] \n");
+    printf("ALIASES\n");
+    printf("\tcd\n\tchdir\n");
+    printf("-----Detail-----\n");*/
+    printf("\tSYNTAX: cd [path | [-i [ID]]] \n");
+    printf("pwd           Print current working directory\n");
+    printf("dir           Display list directory contents\n");
+    printf("\tSYNTAX: dir [-h -s | -a] \n");
+    printf("\tALIASES: ls \n");
+    printf("tree          Print directory tree\n");
+    printf("\tSYNTAX: tree [-h -s | -a] \n");
+    printf("\n");
+    printf("read          Print file contents\n");
+    /*printf("-----Detail-----\n");
+    printf("NAME\n");
+    printf("\tGet-Content\n");
+    printf("SYNTAX\n");
+    printf("\tread [file]\n");
+    printf("ALIASES\n");
+    printf("\tgc\n\tread\n");
+    printf("-----Detail-----\n");*/
+
+    printf("\tSYNTAX: read [filename | [-i [ID]]] \n");
+
+    printf("clear         Clear the screen\n");
+    printf("exit          Exit the program\n");
+    /*printf("-----Detail-----\n");
+    printf("NAME\n");
+    printf("\tExit\n");
+    printf("SYNTAX\n");
+    printf("\texit\n");
+    printf("ALIASES\n");
+    printf("\tquit\n\texit\n\tbye\n");*/
+    printf("\tALIASES: quit, bye \n");
+
+    /*printf("-----Detail-----\n");*/
+    printf("help          Provides help infomation\n");
+    /*printf("-----Detail-----\n");
+    printf("NAME\n");
+    printf("\tHelp\n");
+    printf("SYNTAX\n");
+    printf("\thelp\n");
+    printf("ALIASES\n");
+    printf("\thelp\n\t?\n\t-h\n\t--help\n");
+    printf("-----Detail-----\n");*/
+    printf("\tALIASES: ?, -h, --help \n");
+
+
+
+    
+
+
+
+
+
+
+    printf("\n-----------------\n");
     printf("Supported commands:\n");
     printf("  'info' - print volume information\n");
     printf("  'cd [path]' - change directory\n");
@@ -117,7 +182,7 @@ void run(Volume *volume) {
             }
             volume->tree(hidden, system);
         }
-        else if (command[0] == "read") // read the file
+        else if (command[0] == "read" ) // read the file
             try_read(volume, command);
 
         else if (command[0] == "cls" || command[0] == "clear") // clear the terminal screen
