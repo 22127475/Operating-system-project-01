@@ -273,27 +273,29 @@ void FAT_32::readBootSector()
 // Print out the basic information
 void FAT_32::printBootSector()
 {
-	printf("OEM ID: %s \n", bootSector.oemID);
-	printf("Byte per sector: %d \n", littleEdian(bootSector.bytePerSector, 2));
-	printf("Sector per cluster (Sc): %d \n", int(bootSector.sectorPerCluster));
-	printf("Reserved sector (Sb): %d \n", littleEdian(bootSector.sectorOfBootsector, 2));
-	printf("Number of FAT table (Nf): %d \n", int(bootSector.copyOfFAT));
-	printf("Volume size (Sv): %d \n", littleEdian(bootSector.volumeSize, 4));
-	printf("FAT size (Sf): %d \n", littleEdian(bootSector.FATSize, 4));
+	
+	printf("Disk:                       %C:\\\n", this->diskName[4]);
+	printf("OEM ID:                     %s \n", bootSector.oemID);
+	printf("Byte per sector:            %d \n", littleEdian(bootSector.bytePerSector, 2));
+	printf("Sector per cluster (Sc):    %d \n", int(bootSector.sectorPerCluster));
+	printf("Reserved sector (Sb):       %d \n", littleEdian(bootSector.sectorOfBootsector, 2));
+	printf("Number of FAT table (Nf):   %d \n", int(bootSector.copyOfFAT));
+	printf("Volume size (Sv):           %d \n", littleEdian(bootSector.volumeSize, 4));
+	printf("FAT size (Sf):              %d \n", littleEdian(bootSector.FATSize, 4));
 
 	// Secial information
-	printf("First sector of FAT table: %d \n", littleEdian(bootSector.sectorOfBootsector, 2)); // Sb
+	printf("First sector of FAT table:  %d \n", littleEdian(bootSector.sectorOfBootsector, 2)); // Sb
 	
-	printf("First sector of RDET: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
+	printf("First sector of RDET:       %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
 										  littleEdian(bootSector.FATSize, 4) * 
 										  (unsigned int)bootSector.copyOfFAT); // Sb + Nf * Sf
-	printf("First cluster of RDET: %d \n", littleEdian(bootSector.clusterStartOfRDET, 4));
+	printf("First cluster of RDET:      %d \n", littleEdian(bootSector.clusterStartOfRDET, 4));
 	
-	printf("First sector of Data: %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
+	printf("First sector of Data:       %d \n", littleEdian(bootSector.sectorOfBootsector, 2) + 
 										  littleEdian(bootSector.FATSize, 4) * 
 										  (unsigned int)bootSector.copyOfFAT); // Sb + Nf * Sf
 	
-	printf("FAT type: ");
+	printf("FAT type:                   ");
 	for (int i = 0; i < 8; ++i)
 	{
 		printf("%C", bootSector.FATType[i]);
@@ -620,35 +622,37 @@ std::string FAT_32::readVFAT(FILE *f)
 void FAT_32::printRDET(CFolder &folder,bool printHidden, bool printSystem, std::string time, bool last)
 {
 	// Print name only
-	printf("%s\n",folder.name.c_str());
-
-	int lst = folder.subItem.size() - 1;
-	// Count number of file will print depend on condition
-	while (lst >= 0 && ((!printHidden && folder.isHidden()) 
-                    || (!printSystem && folder.isSystem())))
-    
-		lst--;
-	// Print sub item
-	for (int i = 0; i < folder.subItem.size(); ++i)
+	if (folder.name != "." && folder.name != "..")
 	{
-		if (folder.subItem[i]->isHidden() && !printHidden)
-            continue;
-        if (folder.subItem[i]->isSystem() && !printSystem)
-            continue;
+		printf("%s\n",folder.name.c_str());
 
-		printf("%s", (time + "+---").c_str());
-		if (i != lst)
+		int lst = folder.subItem.size() - 1;
+		// Count number of file will print depend on condition
+		while (lst >= 0 && ((!printHidden && folder.isHidden()) 
+						|| (!printSystem && folder.isSystem())))
+		
+			lst--;
+		// Print sub item
+		for (int i = 0; i < folder.subItem.size(); ++i)
 		{
-			printRDET(*folder.subItem[i],printHidden, printSystem, (time + "|   "), false);
-		}
-		else
-		{			
-			printRDET(*folder.subItem[i],printHidden, printSystem, time + "    ", true);
+			if (folder.subItem[i]->isHidden() && !printHidden)
+				continue;
+			if (folder.subItem[i]->isSystem() && !printSystem)
+				continue;
+			if (folder.subItem[i]->name == "." || folder.subItem[i]->name == "..")
+				continue;
+
+			printf("%s", (time + "+---").c_str());
+			if (i != lst)
+			{
+				printRDET(*folder.subItem[i],printHidden, printSystem, (time + "|   "), false);
+			}
+			else
+			{			
+				printRDET(*folder.subItem[i],printHidden, printSystem, time + "    ", true);
+			}
 		}
 	}
-	
-	
-
 }
 
 // Print folder fully information
@@ -724,7 +728,6 @@ std::vector<BYTE> FAT_32::printFolderInfo(CFolder *folder)
 void FAT_32::print_base_in4()
 {
 	Volume::print_base_in4();
-	printf("%C:\\ \n", this->diskName[4]);
 	this->printBootSector();
 }
 
@@ -771,7 +774,9 @@ bool FAT_32::hasIndex(std::string& command)
 		// If it is not number
 		else
 		{
+        	// fprintf(stderr, "Error: Invalid index");
         	fprintf(stderr, "Error: Invalid index");
+
 			return false;
 
 		}
@@ -984,12 +989,14 @@ void FAT_32::read(const std::string& name)
 
 	// Check if has --index/-i
 	hasIndex(tempName);
+	bool found = false;
 	
 	// If current object name is equal to input name
 	if (curPath->name == tempName)
 	{
 		// Store content
 		res = printFolderInfo(curPath);
+		found = true;
 	}
 	// If not check in sub item
 	else
@@ -998,13 +1005,11 @@ void FAT_32::read(const std::string& name)
 		{
 			if (subFolder->name == tempName)
 			{
-				if (subFolder->name != "." && subFolder->name != "..")
+			found = true;
+
+				if (subFolder->name != "." && subFolder->name != ".." && subFolder->isFolder())
 				{
-					
-					if (!cd(subFolder->name))
-					{
-						printf("\r");
-					}
+					cd(subFolder->name);
 				}
 				// Store content
 				res = printFolderInfo(subFolder);
@@ -1015,6 +1020,11 @@ void FAT_32::read(const std::string& name)
 	}
 	
 
+	if (!found)
+	{
+		printf("Error: No such directory found");
+
+	}
 	// Print out content
 	for (char content : res)
 		printf("%c", content);

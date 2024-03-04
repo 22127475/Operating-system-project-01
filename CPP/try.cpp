@@ -78,18 +78,18 @@ void print_help() {
 
 
 
-    printf("\n-----------------\n");
-    printf("Supported commands:\n");
-    printf("  'info' - print volume information\n");
-    printf("  'cd [path]' - change directory\n");
-    printf("  'cd -i [ID]' or 'cd --index [ID]' - change directory by index\n");
-    printf("  'pwd' - print current working directory\n");
-    printf("  'ls' or 'dir' - list directory contents\n");
-    printf("  'tree' - print directory tree\n");
-    printf("  'read [file]' - print file contents\n");
-    printf("  'cls' or 'clear' - clear the screen\n");
-    printf("  'quit' or 'exit' - exit the program\n");
-    printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
+    // printf("\n-----------------\n");
+    // printf("Supported commands:\n");
+    // printf("  'info' - print volume information\n");
+    // printf("  'cd [path]' - change directory\n");
+    // printf("  'cd -i [ID]' or 'cd --index [ID]' - change directory by index\n");
+    // printf("  'pwd' - print current working directory\n");
+    // printf("  'ls' or 'dir' - list directory contents\n");
+    // printf("  'tree' - print directory tree\n");
+    // printf("  'read [file]' - print file contents\n");
+    // printf("  'cls' or 'clear' - clear the screen\n");
+    // printf("  'quit' or 'exit' - exit the program\n");
+    // printf("  '-h' or '--help' or 'help' or '?' - print the support commands\n");
 }
 // read the file
 void try_read(Volume *volume, std::vector<std::string> name) {
